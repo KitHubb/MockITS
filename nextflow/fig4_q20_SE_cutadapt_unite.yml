@@ -1,0 +1,47 @@
+# Figure 4 benchmark configuration
+# Fixed QC profile: Q20 + min length 50 bp
+# DADA2 profile: trunc_len 0, maxEE 4, truncQ 2
+# Taxonomy: UNITE classifier with optional RefSeq ITS BLAST refinement
+
+run_label: "fig4_q20_SE_cutadapt_unite"
+
+adapter_trim: true
+poly_g_trim: true
+poly_g_min_run: 10
+quality_trim: true
+quality_cutoff: 20
+apply_min_length: true
+min_length: 50
+
+primer_fwd: "GTGARTCATCGAATCTTTG"
+primer_rev: "TCCTCCGCTTATTGATATGC"
+primer_fwd_adapter: "GCATATCAATAAGCGGAGGA"
+primer_rev_adapter: "CAAAGATTCGATGAYTCAC"
+primer_discard_untrimmed: false
+
+itsxpress_region: "ITS2"
+itsxpress_taxa: "F"
+itsxpress_cluster_id: 1.0
+
+dada2_trim_left_f: 0
+dada2_trim_left_r: 0
+dada2_trunc_len_f: 0
+dada2_trunc_len_r: 0
+dada2_max_ee_f: 4.0
+dada2_max_ee_r: 4.0
+dada2_trim_left: 0
+dada2_trunc_len: 0
+dada2_max_ee: 4.0
+dada2_trunc_q: 2
+dada2_min_overlap: 12
+dada2_max_merge_mismatch: 0
+dada2_trim_overhang: false
+dada2_pooling_method: "independent"
+dada2_chimera_method: "consensus"
+dada2_n_reads_learn: 1000000
+
+taxonomy_enabled: true
+
+preprocess_method: "primer"
+analysis_mode: "single"
+blast_refseq_enabled: false

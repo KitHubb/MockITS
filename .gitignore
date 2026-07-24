@@ -1,0 +1,22 @@
+# Raw sequencing data
+*.fastq
+*.fastq.gz
+
+# QIIME2 artifacts
+*.qza
+*.qzv
+
+# Large outputs
+results/
+tmp/
+cache/
+
+# Conda
+.env
+conda_env/
+
+# Logs
+*.log
+
+# Mac/Linux
+.DS_Store
