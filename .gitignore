@@ -20,3 +20,4 @@ conda_env/
 
 # Mac/Linux
 .DS_Store
+.Rproj.user
