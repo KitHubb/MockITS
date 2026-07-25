@@ -1,0 +1,640 @@
+---
+title: "Figure 4 pilot - ITSxpress PE UNITE normalized vs UNITE+BLAST"
+author: "Kim So-Yeon"
+date: "2026-07-24"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 10,
+  fig.height = 6,
+  dpi = 300
+)
+options(stringsAsFactors = FALSE)
+```
+
+# 1. Analysis note
+
+This Rmd uses one completed ITSdetector result set.
+
+- Pre-BLAST UNITE taxonomy: `taxonomy_normalized.tsv`
+- Post-BLAST taxonomy: `taxonomy_blast.tsv`
+- Abundance table: the same DADA2 `table.qza`
+- Taxa plot: species-level display with genus-level fallback for mock genera
+- Accuracy metrics: F1-score, R², Bray-Curtis distance, precision, recall, false discovery rate
+- Feature effect: Random Forest permutation importance and PERMANOVA R²
+
+Taxonomic names are harmonized before comparison with the expected mock composition. For example, `Candida_glabrata` is treated as `Nakaseomyces_glabratus`.
+
+# 2. Load packages and paths
+
+```{r packages-and-paths}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(qiime2R)
+  library(vegan)
+  library(randomForest)
+  library(ggh4x)
+  library(patchwork)
+  library(scales)
+})
+
+project_dir <- "/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper"
+rproj_dir <- file.path(project_dir, "Rproj")
+run_id <- "fig4_q20_PE_itsxpress_unite"
+run_dir <- file.path(project_dir, "Output", run_id)
+
+out_dir <- file.path(rproj_dir, "Output", "fig4_pilot_itsxpress_PE_final_style_corrected")
+table_dir <- file.path(out_dir, "tables")
+figure_dir <- file.path(out_dir, "figures")
+dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
+
+path_table_qza <- file.path(run_dir, "dada2", "itsxpress", "paired", "table.qza")
+path_repseq_qza <- file.path(run_dir, "dada2", "itsxpress", "paired", "repseq.qza")
+path_tax_unite_norm <- file.path(run_dir, "taxonomy_blast", "itsxpress", "paired", "unite_ver10_99", "taxonomy_normalized.tsv")
+path_tax_blast <- file.path(run_dir, "taxonomy_blast", "itsxpress", "paired", "unite_ver10_99", "taxonomy_blast.tsv")
+path_sample_metadata <- file.path(project_dir, "Input", "metadata_mock_stool_and_mock_260724.tsv")
+
+check_paths <- tibble::tibble(
+  file_key = c("table_qza", "repseq_qza", "taxonomy_normalized", "taxonomy_blast", "sample_metadata"),
+  path = c(path_table_qza, path_repseq_qza, path_tax_unite_norm, path_tax_blast, path_sample_metadata),
+  exists = file.exists(c(path_table_qza, path_repseq_qza, path_tax_unite_norm, path_tax_blast, path_sample_metadata))
+)
+print(check_paths)
+
+if (any(!check_paths$exists)) {
+  stop("Missing required input file(s). Check check_paths output.")
+}
+```
+
+# 3. Load data
+
+```{r load-data}
+feature_table <- qiime2R::read_qza(path_table_qza)$data
+repseq <- qiime2R::read_qza(path_repseq_qza)$data
+
+taxonomy_normalized <- readr::read_tsv(path_tax_unite_norm, show_col_types = FALSE)
+taxonomy_blast <- readr::read_tsv(path_tax_blast, show_col_types = FALSE)
+sample_metadata <- readr::read_tsv(path_sample_metadata, show_col_types = FALSE)
+
+sample_metadata <- sample_metadata %>%
+  dplyr::rename(
+    sample_id = sample,
+    DNA_kit = kit_code
+  ) %>%
+  dplyr::mutate(
+    sample_id = as.character(.data$sample_id),
+    DNA_kit = dplyr::recode(.data$DNA_kit,
+                            "D" = "DNeasy",
+                            "Q" = "QIAStool",
+                            "Z" = "Zymobiomics",
+                            .default = .data$DNA_kit),
+    replicate = as.character(.data$replicate),
+    matrix_type = as.character(.data$matrix_type)
+  ) %>%
+  dplyr::distinct(.data$sample_id, .keep_all = TRUE)
+```
+
+# 4. Mock taxa, color, and nomenclature harmonization
+
+```{r mock-taxa-color}
+color <- c("#E41A1CFF", "#377EB8FF",
+           "#4DAF4AFF", "#984EA3FF",
+           "#FF7F00FF", "#FFFF33FF",
+           "#A65628FF", "#f55cacFF",
+           "#E6AB02FF", "#1B9E77FF",
+           "#999999FF")
+
+Mock_g <- c(
+  "Aspergillus",
+  "Candida",
+  "Cryptococcus",
+  "Cutaneotrichosporon",
+  "Fusarium",
+  "Malassezia",
+  "Nakaseomyces",
+  "Penicillium",
+  "Saccharomyces",
+  "Trichophyton"
+)
+
+sp_level <- c("Aspergillus_fumigatus", 
+              "Candida_albicans", 
+              "Cryptococcus_neoformans",
+              "Cutaneotrichosporon_dermatis", "Cutaneotrichosporon_jirovecii", "Cutaneotrichosporon_g",
+              "Fusarium_keratoplasticum", "Fusarium_g",
+              "Malassezia_globosa", "Malassezia_g",
+              "Nakaseomyces_glabratus", "Nakaseomyces_g",
+              "Penicillium_lanosocoeruleum", "Penicillium_roqueforti", "Penicillium_g",
+              "Saccharomyces_cerevisiae", "Saccharomyces_kudriavzevii", "Saccharomyces_uvarum",
+              "Trichophyton_interdigitale", "Trichophyton_mentagrophytes")
+
+color2 <- c("#E41A1CFF", 
+            "#377EB8FF", 
+            "#4DAF4AFF",
+            "#984EA3FF", "#cea6d4", "#ebdbee",
+            "#FF7F00FF", "#ffc489FF",
+            "#FFFF33FF", "#d0d062",
+            "#A65628FF", "#e6b598",
+            "#f55cacFF", "#F781BFFF", "#fccbe4FF",
+            "#E6AB02FF", "#fedf87", "#fff4d5",
+            "#1B9E77FF", "#91ecd1",
+            "#999999FF")
+
+names(color2) <- c(sp_level, "Other")
+
+harmonize_species <- function(x) {
+  x <- as.character(x)
+  x <- stringr::str_replace_all(x, " ", "_")
+  x <- stringr::str_replace(x, "^s__", "")
+  dplyr::recode(
+    x,
+    "Candida_glabrata" = "Nakaseomyces_glabratus",
+    "Cryptococcus_neoformans_var_grubii" = "Cryptococcus_neoformans",
+    "Cryptococcus_neoformans_var._grubii" = "Cryptococcus_neoformans",
+    "Penicillium_chrysogenum" = "Penicillium_g",
+    "Penicillium_rubens" = "Penicillium_g",
+    .default = x
+  )
+}
+
+harmonize_genus <- function(x) {
+  x <- as.character(x)
+  x <- stringr::str_replace_all(x, " ", "_")
+  x <- stringr::str_replace(x, "^g__", "")
+  dplyr::recode(
+    x,
+    "Candida" = "Candida",
+    "Nakaseomyces" = "Nakaseomyces",
+    .default = x
+  )
+}
+
+expected_species <- c(
+  "Aspergillus_fumigatus",
+  "Candida_albicans",
+  "Cryptococcus_neoformans",
+  "Cutaneotrichosporon_dermatis",
+  "Fusarium_keratoplasticum",
+  "Malassezia_globosa",
+  "Nakaseomyces_glabratus",
+  "Penicillium_g",
+  "Saccharomyces_cerevisiae",
+  "Trichophyton_interdigitale"
+)
+
+expected_truth <- dplyr::bind_rows(
+  tibble::tibble(
+    taxonomic_rank = "Species",
+    taxon = expected_species,
+    expected_abundance = 0.1
+  ),
+  tibble::tibble(
+    taxonomic_rank = "Genus",
+    taxon = Mock_g,
+    expected_abundance = 0.1
+  )
+)
+
+readr::write_tsv(expected_truth, file.path(table_dir, "expected_truth_harmonized.tsv"))
+```
+
+# 5. Prepare feature table and taxonomy tables
+
+```{r prepare-feature-taxonomy}
+tax_unite <- taxonomy_normalized %>%
+  dplyr::rename(feature_id = `Feature ID`) %>%
+  dplyr::mutate(
+    Genus = harmonize_genus(.data$Genus),
+    Species = harmonize_species(.data$Species),
+    taxonomy_method = "UNITE",
+    BLAST = "UNITE"
+  ) %>%
+  dplyr::select(.data$feature_id, .data$Kingdom, .data$Phylum, .data$Class, .data$Order,
+                .data$Family, .data$Genus, .data$Species, .data$taxonomy_method, .data$BLAST)
+
+tax_blast <- taxonomy_blast %>%
+  dplyr::rename(feature_id = ASV) %>%
+  dplyr::mutate(
+    Genus = harmonize_genus(.data$Genus),
+    Species = harmonize_species(.data$Species),
+    taxonomy_method = "UNITE+BLAST",
+    BLAST = "UNITE+BLAST"
+  ) %>%
+  dplyr::select(.data$feature_id, .data$Kingdom, .data$Phylum, .data$Class, .data$Order,
+                .data$Family, .data$Genus, .data$Species, .data$taxonomy_method, .data$BLAST)
+
+taxonomy_all <- dplyr::bind_rows(tax_unite, tax_blast)
+
+feature_table_df <- as.data.frame(feature_table)
+row_match <- sum(rownames(feature_table_df) %in% taxonomy_all$feature_id)
+col_match <- sum(colnames(feature_table_df) %in% taxonomy_all$feature_id)
+
+if (col_match > row_match) {
+  feature_table_df <- t(feature_table_df) %>% as.data.frame()
+}
+
+feature_table_long <- feature_table_df %>%
+  tibble::rownames_to_column("feature_id") %>%
+  tidyr::pivot_longer(
+    cols = - .data$feature_id,
+    names_to = "sample_id",
+    values_to = "count"
+  ) %>%
+  dplyr::mutate(
+    sample_id = stringr::str_replace(as.character(.data$sample_id), "^X", ""),
+    count = as.numeric(.data$count)
+  ) %>%
+  dplyr::left_join(sample_metadata, by = "sample_id") %>%
+  dplyr::mutate(
+    pipeline = "ITSdetector",
+    Trimm = "ITSx",
+    Paired = "PE",
+    Method = paste(.data$Trimm, .data$Paired, sep = "_")
+  )
+
+sample_depth <- feature_table_long %>%
+  dplyr::group_by(.data$sample_id) %>%
+  dplyr::summarise(total_reads = sum(.data$count, na.rm = TRUE), .groups = "drop")
+
+readr::write_tsv(tax_unite, file.path(table_dir, "taxonomy_unite_normalized_used.tsv"))
+readr::write_tsv(tax_blast, file.path(table_dir, "taxonomy_blast_used.tsv"))
+readr::write_tsv(feature_table_long, file.path(table_dir, "feature_table_long_asv_count.tsv"))
+```
+
+# 6. Long-format table
+
+```{r long-format}
+taxa_long <- feature_table_long %>%
+  dplyr::select(.data$feature_id, .data$sample_id, .data$count, .data$DNA_kit,
+                .data$replicate, .data$matrix_type, .data$pipeline, .data$Trimm,
+                .data$Paired, .data$Method) %>%
+  dplyr::left_join(taxonomy_all, by = "feature_id") %>%
+  dplyr::mutate(
+    Genus = dplyr::if_else(is.na(.data$Genus) | .data$Genus == "", "Unclassified", .data$Genus),
+    Species = dplyr::if_else(is.na(.data$Species) | .data$Species == "", "Unclassified", .data$Species)
+  ) %>%
+  tidyr::pivot_longer(
+    cols = c("Genus", "Species"),
+    names_to = "taxonomic_rank",
+    values_to = "taxon"
+  ) %>%
+  dplyr::group_by(.data$sample_id, .data$DNA_kit, .data$replicate, .data$matrix_type,
+                  .data$pipeline, .data$Trimm, .data$Paired, .data$Method,
+                  .data$taxonomy_method, .data$BLAST, .data$taxonomic_rank, .data$taxon) %>%
+  dplyr::summarise(count = sum(.data$count, na.rm = TRUE), .groups = "drop") %>%
+  dplyr::left_join(sample_depth, by = "sample_id") %>%
+  dplyr::mutate(
+    relative_abundance = dplyr::if_else(.data$total_reads > 0, .data$count / .data$total_reads, 0)
+  )
+
+sample_method_grid <- taxa_long %>%
+  dplyr::distinct(.data$sample_id, .data$DNA_kit, .data$replicate, .data$matrix_type,
+                  .data$pipeline, .data$Trimm, .data$Paired, .data$Method,
+                  .data$taxonomy_method, .data$BLAST)
+
+taxon_universe <- taxa_long %>%
+  dplyr::distinct(.data$taxonomic_rank, .data$taxon) %>%
+  dplyr::bind_rows(expected_truth %>% dplyr::select(.data$taxonomic_rank, .data$taxon)) %>%
+  dplyr::distinct(.data$taxonomic_rank, .data$taxon)
+
+benchmark_long <- sample_method_grid %>%
+  tidyr::crossing(taxon_universe) %>%
+  dplyr::left_join(expected_truth, by = c("taxonomic_rank", "taxon")) %>%
+  dplyr::mutate(
+    expected_abundance = dplyr::case_when(
+      .data$matrix_type %in% c("mock_only", "mock_plus_stool") & !is.na(.data$expected_abundance) ~ .data$expected_abundance,
+      TRUE ~ 0
+    )
+  ) %>%
+  dplyr::left_join(
+    taxa_long,
+    by = c("sample_id", "DNA_kit", "replicate", "matrix_type", "pipeline", "Trimm", "Paired",
+           "Method", "taxonomy_method", "BLAST", "taxonomic_rank", "taxon")
+  ) %>%
+  dplyr::mutate(
+    count = tidyr::replace_na(.data$count, 0),
+    total_reads = tidyr::replace_na(.data$total_reads, 0),
+    relative_abundance = tidyr::replace_na(.data$relative_abundance, 0)
+  ) %>%
+  dplyr::rename(
+    sample_id = .data$sample_id,
+    kit = .data$DNA_kit,
+    preprocess_method = .data$Trimm,
+    read_strategy = .data$Paired
+  ) %>%
+  dplyr::select(.data$sample_id, .data$kit, .data$replicate, .data$matrix_type,
+                .data$pipeline, .data$preprocess_method, .data$read_strategy,
+                .data$Method, .data$taxonomy_method, .data$BLAST, .data$taxonomic_rank,
+                .data$taxon, .data$count, .data$total_reads,
+                .data$relative_abundance, .data$expected_abundance)
+
+readr::write_tsv(benchmark_long, file.path(table_dir, "benchmark_long_genus_species.tsv"))
+```
+
+# 7. Taxa plot
+
+```{r taxa-plot, fig.width=14, fig.height=8}
+
+taxa_long$feature_id
+
+taxa_plot_df <- taxa_long %>%
+  dplyr::filter(taxonomic_rank == "Species") %>%
+  dplyr::left_join(
+    taxonomy_all %>% dplyr::select(feature_id, taxonomy_method, Genus, Species),
+    by = c("taxonomy_method", "feature_id")
+  ) %>%
+  dplyr::mutate(
+    Species2 = dplyr::case_when(
+      Species %in% sp_level ~ Species,
+      Genus %in% Mock_g ~ paste0(Genus, "_g"),
+      TRUE ~ "Other"
+    ),
+    Species2 = dplyr::if_else(Species2 %in% sp_level, Species2, "Other")
+  ) %>%
+  dplyr::group_by(sample_id, DNA_kit, replicate, matrix_type,
+                  Method, BLAST, Species2) %>%
+  dplyr::summarise(Abundance = sum(relative_abundance, na.rm = TRUE), .groups = "drop") %>%
+  dplyr::mutate(
+    Species2 = factor(Species2, levels = c(sp_level, "Other")),
+    BLAST = factor(BLAST, levels = c("UNITE", "UNITE+BLAST"))
+  )
+
+sample_order <- taxa_plot_df %>%
+  dplyr::distinct(matrix_type, DNA_kit, replicate, sample_id) %>%
+  dplyr::arrange(matrix_type, DNA_kit, replicate, sample_id) %>%
+  dplyr::pull(sample_id) %>%
+  unique()
+
+taxa_plot_df <- taxa_plot_df %>%
+  dplyr::mutate(sample_id = factor(sample_id, levels = sample_order))
+
+readr::write_tsv(taxa_plot_df, file.path(table_dir, "figure_taxa_plot_data.tsv"))
+
+tax_ss <- ggplot2::ggplot(
+  data = taxa_plot_df,
+  ggplot2::aes(x = sample_id, y = Abundance, fill = Species2)
+) +
+  ggplot2::geom_bar(position = "fill", stat = "identity") +
+  ggplot2::labs(y = "Relative abundance", x = "") +
+  ggplot2::theme(
+    axis.text.x.bottom = ggplot2::element_text(angle = 90, vjust = 0.4, hjust = 1),
+    legend.position = "right",
+    legend.background = ggplot2::element_rect(fill = "transparent"),
+    legend.box.background = ggplot2::element_rect(fill = "transparent", color = NA),
+    plot.background = ggplot2::element_rect(fill = "transparent", color = NA),
+    panel.grid.major = ggplot2::element_blank(),
+    panel.grid.minor = ggplot2::element_blank(),
+    panel.background = ggplot2::element_blank(),
+    strip.background = ggplot2::element_blank(),
+    strip.text = ggplot2::element_text(face = "bold")
+  ) +
+  ggplot2::scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  ggplot2::scale_fill_manual(values = color2, drop = FALSE) +
+  ggh4x::facet_nested(~ BLAST + Method, scale = "free_x", space = "free_x")
+
+tax_ss
+
+ggplot2::ggsave(file.path(figure_dir, "Figure_taxa_plot_species_genus_fallback.png"), tax_ss, width = 14, height = 8, dpi = 300)
+ggplot2::ggsave(file.path(figure_dir, "Figure_taxa_plot_species_genus_fallback.pdf"), tax_ss, width = 14, height = 8)
+```
+
+# 8. Accuracy metrics
+
+```{r accuracy-metrics}
+metric_input <- benchmark_long %>%
+  dplyr::filter(.data$matrix_type %in% c("mock_only", "mock_plus_stool")) %>%
+  dplyr::mutate(
+    detected = .data$count > 0,
+    expected_detected = .data$expected_abundance > 0
+  )
+
+metric_set <- metric_input %>%
+  dplyr::group_by(.data$sample_id, .data$kit, .data$replicate, .data$matrix_type,
+                  .data$pipeline, .data$preprocess_method, .data$read_strategy,
+                  .data$Method, .data$taxonomy_method, .data$BLAST, .data$taxonomic_rank) %>%
+  dplyr::summarise(
+    TP = sum(.data$detected & .data$expected_detected, na.rm = TRUE),
+    FP = sum(.data$detected & !.data$expected_detected, na.rm = TRUE),
+    FN = sum(!.data$detected & .data$expected_detected, na.rm = TRUE),
+    precision = dplyr::if_else(TP + FP > 0, TP / (TP + FP), NA_real_),
+    recall = dplyr::if_else(TP + FN > 0, TP / (TP + FN), NA_real_),
+    F1 = dplyr::if_else(!is.na(.data$precision) & !is.na(.data$recall) & (.data$precision + .data$recall) > 0,
+                        2 * .data$precision * .data$recall / (.data$precision + .data$recall), NA_real_),
+    false_discovery_rate = dplyr::if_else(TP + FP > 0, FP / (TP + FP), NA_real_),
+    Bray_Curtis_distance = as.numeric(vegan::vegdist(rbind(.data$relative_abundance, .data$expected_abundance), method = "bray")[1]),
+    R2 = dplyr::if_else(
+      stats::var(.data$expected_abundance, na.rm = TRUE) > 0 & sum(.data$relative_abundance, na.rm = TRUE) > 0,
+      summary(stats::lm(.data$relative_abundance ~ .data$expected_abundance))$r.squared,
+      NA_real_
+    ),
+    .groups = "drop"
+  )
+
+readr::write_tsv(metric_set, file.path(table_dir, "accuracy_metrics_by_sample_rank.tsv"))
+```
+
+```{r plot-bar-function}
+plot_bar <- function(data,
+                     x_var = "Method",
+                     y_var = "JSD",
+                     fill_var = "Method",
+                     fill_colors = NULL,
+                     y_limits = NULL,
+                     y_expand = 0.05) {
+
+  df_sum <- data %>%
+    dplyr::group_by(.data[[x_var]]) %>%
+    dplyr::summarise(
+      mean = mean(.data[[y_var]], na.rm = TRUE),
+      sd = stats::sd(.data[[y_var]], na.rm = TRUE),
+      n = sum(!is.na(.data[[y_var]])),
+      se = .data$sd / sqrt(.data$n),
+      ci_lower = .data$mean - 1.96 * .data$se,
+      ci_upper = .data$mean + 1.96 * .data$se,
+      .groups = "drop"
+    )
+
+  p <- ggplot2::ggplot(df_sum,
+                       ggplot2::aes(x = .data[[x_var]], y = .data$mean, fill = .data[[x_var]])) +
+    ggplot2::geom_col(width = 0.6, color = "black", linewidth = 0.4) +
+    ggplot2::geom_errorbar(ggplot2::aes(ymin = .data$ci_lower, ymax = .data$ci_upper),
+                           width = 0.2, linewidth = 0.6) +
+    ggplot2::labs(x = NULL, y = y_var) +
+    ggplot2::theme_classic(base_size = 12) +
+    ggplot2::theme(
+      axis.line = ggplot2::element_line(color = "black", linewidth = 0.5),
+      axis.ticks = ggplot2::element_line(color = "black", linewidth = 0.5),
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1.1, vjust = 0.9),
+      legend.position = "none"
+    )
+
+  if (!is.null(fill_colors)) {
+    p <- p + ggplot2::scale_fill_manual(values = fill_colors)
+  }
+
+  if (!is.null(y_limits)) {
+    p <- p + ggplot2::coord_cartesian(ylim = y_limits)
+  } else {
+    y_max <- max(df_sum$ci_upper, na.rm = TRUE)
+    p <- p + ggplot2::coord_cartesian(ylim = c(0, y_max * (1 + y_expand)))
+  }
+
+  return(p)
+}
+```
+
+```{r accuracy-bar-plots, fig.width=14, fig.height=9}
+metric_plot_df <- metric_set %>%
+  dplyr::filter(.data$taxonomic_rank == "Species") %>%
+  dplyr::mutate(
+    Method2 = paste(.data$BLAST, .data$kit, sep = "\n")
+  )
+
+method_colors <- c("#377EB8FF", "#E41A1CFF", "#377EB8FF", "#E41A1CFF", "#377EB8FF", "#E41A1CFF")
+names(method_colors) <- unique(metric_plot_df$Method2)
+
+p_f1 <- plot_bar(metric_plot_df, x_var = "Method2", y_var = "F1", fill_colors = method_colors, y_limits = c(0, 1))
+p_r2 <- plot_bar(metric_plot_df, x_var = "Method2", y_var = "R2", fill_colors = method_colors, y_limits = c(0, 1))
+p_bc <- plot_bar(metric_plot_df, x_var = "Method2", y_var = "Bray_Curtis_distance", fill_colors = method_colors, y_limits = c(0, 1))
+p_precision <- plot_bar(metric_plot_df, x_var = "Method2", y_var = "precision", fill_colors = method_colors, y_limits = c(0, 1))
+p_recall <- plot_bar(metric_plot_df, x_var = "Method2", y_var = "recall", fill_colors = method_colors, y_limits = c(0, 1))
+p_fdr <- plot_bar(metric_plot_df, x_var = "Method2", y_var = "false_discovery_rate", fill_colors = method_colors, y_limits = c(0, 1))
+
+accuracy_pp <- (p_f1 | p_r2 | p_bc) / (p_precision | p_recall | p_fdr)
+accuracy_pp
+
+ggplot2::ggsave(file.path(figure_dir, "Figure_accuracy_bar_species.png"), accuracy_pp, width = 14, height = 9, dpi = 300)
+ggplot2::ggsave(file.path(figure_dir, "Figure_accuracy_bar_species.pdf"), accuracy_pp, width = 14, height = 9)
+```
+
+# 9. Feature importance and PERMANOVA R2
+
+```{r feature-importance}
+meta2 <- metric_set %>%
+  dplyr::filter(.data$taxonomic_rank == "Species") %>%
+  dplyr::rename(DNA_kit = .data$kit, Trimm = .data$preprocess_method, Paired = .data$read_strategy) %>%
+  dplyr::mutate(
+    DNA_kit = factor(.data$DNA_kit),
+    BLAST = factor(.data$BLAST, levels = c("UNITE", "UNITE+BLAST")),
+    Paired = factor(.data$Paired),
+    Trimm = factor(.data$Trimm)
+  )
+
+rf_vars <- c("DNA_kit", "BLAST", "Paired", "Trimm")
+rf_vars_use <- rf_vars[purrr::map_lgl(rf_vars, ~ dplyr::n_distinct(meta2[[.x]], na.rm = TRUE) > 1)]
+
+rf_formula_r2 <- stats::as.formula(paste("R2 ~", paste(rf_vars_use, collapse = " + ")))
+rf_formula_f1 <- stats::as.formula(paste("F1 ~", paste(rf_vars_use, collapse = " + ")))
+
+set.seed(123)
+rf_r2 <- randomForest::randomForest(rf_formula_r2, data = meta2, importance = TRUE)
+
+importance_r2.1 <- randomForest::importance(rf_r2, type = 1) %>% data.frame()
+importance_r2.1$Variable <- rownames(importance_r2.1)
+colnames(importance_r2.1)[1] <- "IncMSE"
+importance_r2.1$Outcome <- "R2"
+
+set.seed(123)
+rf_f1 <- randomForest::randomForest(rf_formula_f1, data = meta2, importance = TRUE)
+
+importance_f1.1 <- randomForest::importance(rf_f1, type = 1) %>% data.frame()
+importance_f1.1$Variable <- rownames(importance_f1.1)
+colnames(importance_f1.1)[1] <- "IncMSE"
+importance_f1.1$Outcome <- "F1"
+
+readr::write_tsv(importance_r2.1, file.path(table_dir, "random_forest_importance_R2.tsv"))
+readr::write_tsv(importance_f1.1, file.path(table_dir, "random_forest_importance_F1.tsv"))
+```
+
+```{r permanova-r2}
+community_for_permanova <- benchmark_long %>%
+  dplyr::filter(.data$taxonomic_rank == "Species", .data$matrix_type %in% c("mock_only", "mock_plus_stool")) %>%
+  dplyr::mutate(sample_method_id = paste(.data$sample_id, .data$BLAST, sep = "__"))
+
+community_wide <- community_for_permanova %>%
+  dplyr::select(.data$sample_method_id, .data$taxon, .data$relative_abundance) %>%
+  dplyr::group_by(.data$sample_method_id, .data$taxon) %>%
+  dplyr::summarise(relative_abundance = sum(.data$relative_abundance, na.rm = TRUE), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = .data$taxon, values_from = .data$relative_abundance, values_fill = 0)
+
+meta <- community_for_permanova %>%
+  dplyr::distinct(.data$sample_method_id, DNA_kit = .data$kit, BLAST = .data$BLAST,
+                  Paired = .data$read_strategy, Trimm = .data$preprocess_method, .data$matrix_type) %>%
+  dplyr::arrange(.data$sample_method_id)
+
+community_mat <- community_wide %>%
+  dplyr::arrange(.data$sample_method_id) %>%
+  tibble::column_to_rownames("sample_method_id") %>%
+  as.matrix()
+
+meta <- meta %>%
+  dplyr::filter(.data$sample_method_id %in% rownames(community_mat)) %>%
+  dplyr::arrange(match(.data$sample_method_id, rownames(community_mat)))
+
+per_vars <- c("DNA_kit", "BLAST", "Paired", "Trimm")
+per_vars_use <- per_vars[purrr::map_lgl(per_vars, ~ dplyr::n_distinct(meta[[.x]], na.rm = TRUE) > 1)]
+
+set.seed(123)
+dist_matrix2 <- vegan::vegdist(community_mat, method = "bray")
+per_formula <- stats::as.formula(paste("dist_matrix2 ~", paste(per_vars_use, collapse = " + ")))
+per_res <- vegan::adonis2(per_formula, data = meta, permutations = 9999, by = "margin")
+perma_out <- data.frame(per_res) %>%
+  tibble::rownames_to_column("Variable") %>%
+  dplyr::filter(!.data$Variable %in% c("Residual", "Total"))
+
+readr::write_tsv(perma_out, file.path(table_dir, "permanova_R2_species.tsv"))
+```
+
+```{r feature-effect-plot, fig.width=8, fig.height=6}
+plot_effect <- function(df, x) {
+  p <- ggplot2::ggplot(df,
+                       ggplot2::aes(x = .data$Variable,
+                                    y = .data[[x]])) +
+    ggplot2::geom_point(fill = "steelblue", color = "black", size = 3, shape = 21) +
+    ggplot2::coord_flip() +
+    ggplot2::theme_bw(base_size = 13) +
+    ggplot2::labs(x = NULL, y = NULL)
+  return(p)
+}
+
+perma_plot_df <- perma_out %>%
+  dplyr::rename(IncMSE = .data$R2) %>%
+  dplyr::select(.data$Variable, .data$IncMSE)
+
+rf_pp <- plot_effect(importance_r2.1, "IncMSE") / plot_effect(importance_f1.1, "IncMSE") / plot_effect(perma_plot_df, "IncMSE") +
+  patchwork::plot_annotation(title = "Feature effects: RF %IncMSE and PERMANOVA R²")
+
+rf_pp
+
+ggplot2::ggsave(file.path(figure_dir, "Figure_feature_effect_RF_PERMANOVA_point.png"), rf_pp, width = 8, height = 8, dpi = 300)
+ggplot2::ggsave(file.path(figure_dir, "Figure_feature_effect_RF_PERMANOVA_point.pdf"), rf_pp, width = 8, height = 8)
+```
+
+# 10. Combined figure
+
+```{r combined-figure, fig.width=16, fig.height=18}
+fig_combined <- tax_ss / accuracy_pp / rf_pp +
+  patchwork::plot_layout(heights = c(2.1, 1.8, 1.2)) +
+  patchwork::plot_annotation(title = "ITSxpress PE: UNITE normalized vs UNITE+BLAST")
+
+fig_combined
+
+ggplot2::ggsave(file.path(figure_dir, "Figure_combined_ITSxpress_PE_final_style_corrected.png"), fig_combined, width = 16, height = 18, dpi = 300)
+ggplot2::ggsave(file.path(figure_dir, "Figure_combined_ITSxpress_PE_final_style_corrected.pdf"), fig_combined, width = 16, height = 18)
+```
+
+# 11. Session info
+
+```{r session-info}
+sessionInfo()
+```

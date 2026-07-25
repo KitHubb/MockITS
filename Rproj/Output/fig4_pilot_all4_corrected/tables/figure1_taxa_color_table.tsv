@@ -1,0 +1,13 @@
+taxon_display	total_abundance	Genus	display_type	sort_key	additional_rank	n_additional	base_color	tint_amount	color
+Aspergillus_fumigatus	3.044198161478025	Aspergillus	Mock_species	Aspergillus_fumigatus	NA	NA	#E41A1CFF	0	#E41A1CFF
+Candida_albicans	28.477047380520414	Candida	Mock_species	Candida_albicans	NA	NA	#377EB8FF	0	#377EB8FF
+Cryptococcus_neoformans	14.376486748301165	Cryptococcus	Mock_species	Cryptococcus_neoformans	NA	NA	#4DAF4AFF	0	#4DAF4AFF
+Cutaneotrichosporon_mucoides	21.648533572901663	Cutaneotrichosporon	Additional_species	Cutaneotrichosporon_mucoides	1	1	#984EA3FF	0.22	#B670C1FF
+Fusarium_keratoplasticum	0.09202285001197529	Fusarium	Mock_species	Fusarium_keratoplasticum	NA	NA	#FF7F00FF	0	#FF7F00FF
+Malassezia_globosa	0.0023911808916356435	Malassezia	Mock_species	Malassezia_globosa	NA	NA	#FFFF33FF	0	#FFFF33FF
+Nakaseomyces_glabratus	10.312437182395874	Nakaseomyces	Mock_species	Nakaseomyces_glabratus	NA	NA	#A65628FF	0	#A65628FF
+Penicillium_flavigenum	0.004598262491248521	Penicillium	Additional_species	Penicillium_flavigenum	1	1	#f55cacFF	0.22	#FF81BFFF
+Saccharomyces_cerevisiae	5.044199053165391	Saccharomyces	Mock_species	Saccharomyces_cerevisiae	NA	NA	#E6AB02FF	0	#E6AB02FF
+Saccharomyces_kudriavzevii	4.5839755986678714e-5	Saccharomyces	Additional_species	Saccharomyces_kudriavzevii	1	1	#E6AB02FF	0.22	#F7BB35FF
+Trichophyton_mentagrophytes	0.47187018783731005	Trichophyton	Additional_species	Trichophyton_mentagrophytes	1	1	#1B9E77FF	0.22	#46B78FFF
+Other	12.526169580249313	Other	Other	zzzzzz_Other	NA	NA	#999999FF	0	#999999FF

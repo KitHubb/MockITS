@@ -1,0 +1,7 @@
+Metric	Value
+total_asvs	221
+qiime_species_retained	113
+qiime_genus_unresolved	67
+no_eligible_blast_hit	24
+ambiguous_blast_hit	9
+species_replaced_by_blast	8

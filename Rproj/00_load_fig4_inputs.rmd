@@ -1,0 +1,326 @@
+---
+title: "00_load_fig4_inputs.R"
+author: "kin soyeon"
+date: "2026-07-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+# library(devtools)
+# devtools::install_github("jbisanz/qiime2R")
+
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(qiime2R)
+})
+```
+
+
+```{r}
+# ------------------------------------------------------------
+# 1. Project paths
+# ------------------------------------------------------------
+
+project_dir <- "/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper"
+rproj_dir <- file.path(project_dir, "Rproj")
+
+run_id <- "fig4_q20_PE_itsxpress_unite"
+
+run_dir <- file.path(
+  project_dir,
+  "Output",
+  run_id
+)
+
+metadata_path <- file.path(
+  project_dir,
+  "Input",
+  "metadata_mock_stool_and_mock_260724.tsv"
+)
+```
+
+
+```{r}
+# ------------------------------------------------------------
+# 2. ITSdetector result paths
+# ------------------------------------------------------------
+
+paths <- list(
+  run_dir = run_dir,
+
+  # DADA2 outputs
+  table_qza = file.path(
+    run_dir,
+    "dada2", "itsxpress", "paired",
+    "table.qza"
+  ),
+
+  repseq_qza = file.path(
+    run_dir,
+    "dada2", "itsxpress", "paired",
+    "repseq.qza"
+  ),
+
+  denoising_stats_qza = file.path(
+    run_dir,
+    "dada2", "itsxpress", "paired",
+    "denoising_stats.qza"
+  ),
+
+  # UNITE taxonomy
+  taxonomy_unite_tsv = file.path(
+    run_dir,
+    "taxonomy", "itsxpress", "paired", "unite_ver10_99",
+    "taxonomy.tsv"
+  ),
+
+  taxonomy_unite_qza = file.path(
+    run_dir,
+    "taxonomy", "itsxpress", "paired", "unite_ver10_99",
+    "taxonomy.qza"
+  ),
+
+  # BLAST-refined taxonomy
+  taxonomy_blast_tsv = file.path(
+    run_dir,
+    "taxonomy_blast", "itsxpress", "paired", "unite_ver10_99",
+    "taxonomy_blast.tsv"
+  ),
+
+  blast_evidence_tsv = file.path(
+    run_dir,
+    "taxonomy_blast", "itsxpress", "paired", "unite_ver10_99",
+    "taxonomy_blast_evidence.tsv"
+  ),
+
+  blast_report_tsv = file.path(
+    run_dir,
+    "taxonomy_blast", "itsxpress", "paired", "unite_ver10_99",
+    "taxonomy_blast_report.tsv"
+  ),
+
+  blast_candidates_top5_tsv = file.path(
+    run_dir,
+    "taxonomy_blast", "itsxpress", "paired", "unite_ver10_99",
+    "blast_candidates_top5.tsv"
+  ),
+
+  # Metadata / QC
+  sample_metadata = metadata_path,
+
+  samplesheet_validated = file.path(
+    run_dir,
+    "input_validation",
+    "samplesheet.validated.csv"
+  ),
+
+  cleanup_qc_summary = file.path(
+    run_dir,
+    "cleanup_qc",
+    "cleanup_qc_summary.tsv"
+  ),
+
+  qiime_manifest_pe = file.path(
+    run_dir,
+    "qiime_manifest",
+    "qiime_manifest_pe.tsv"
+  ),
+
+  qiime_manifest_r1 = file.path(
+    run_dir,
+    "qiime_manifest",
+    "qiime_manifest_r1.tsv"
+  )
+)
+```
+
+
+```{r}
+# ------------------------------------------------------------
+# 3. Check file existence
+# ------------------------------------------------------------
+
+check_paths <- tibble(
+  file_key = names(paths),
+  path = unlist(paths),
+  exists = file.exists(unlist(paths))
+)
+
+print(check_paths)
+
+missing_files <- check_paths %>%
+  filter(!exists)
+
+if (nrow(missing_files) > 0) {
+  warning(
+    "Some files are missing:\n",
+    paste(missing_files$path, collapse = "\n")
+  )
+}
+```
+
+
+```{r}
+# ------------------------------------------------------------
+# 4. Load QIIME2 artifacts
+# ------------------------------------------------------------
+
+feature_table_qza <- read_qza(paths$table_qza)
+repseq_qza <- read_qza(paths$repseq_qza)
+
+feature_table <- feature_table_qza$data
+repseq <- repseq_qza$data
+
+# Denoising stats may or may not be needed later
+denoising_stats <- NULL
+if (file.exists(paths$denoising_stats_qza)) {
+  denoising_stats <- read_qza(paths$denoising_stats_qza)$data
+}
+```
+
+
+```{r}
+# ------------------------------------------------------------
+# 5. Load taxonomy tables
+# ------------------------------------------------------------
+
+taxonomy_unite <- read_tsv(
+  paths$taxonomy_unite_tsv,
+  show_col_types = FALSE
+)
+
+taxonomy_blast <- NULL
+if (file.exists(paths$taxonomy_blast_tsv)) {
+  taxonomy_blast <- read_tsv(
+    paths$taxonomy_blast_tsv,
+    show_col_types = FALSE
+  )
+}
+
+blast_evidence <- NULL
+if (file.exists(paths$blast_evidence_tsv)) {
+  blast_evidence <- read_tsv(
+    paths$blast_evidence_tsv,
+    show_col_types = FALSE
+  )
+}
+
+blast_report <- NULL
+if (file.exists(paths$blast_report_tsv)) {
+  blast_report <- read_tsv(
+    paths$blast_report_tsv,
+    show_col_types = FALSE
+  )
+}
+
+blast_candidates_top5 <- NULL
+if (file.exists(paths$blast_candidates_top5_tsv)) {
+  blast_candidates_top5 <- read_tsv(
+    paths$blast_candidates_top5_tsv,
+    show_col_types = FALSE
+  )
+}
+```
+
+
+```{r}
+# ------------------------------------------------------------
+# 6. Load metadata and run-level files
+# ------------------------------------------------------------
+
+sample_metadata <- read_tsv(
+  paths$sample_metadata,
+  show_col_types = FALSE
+)
+
+samplesheet_validated <- read_csv(
+  paths$samplesheet_validated,
+  show_col_types = FALSE
+)
+
+cleanup_qc_summary <- read_tsv(
+  paths$cleanup_qc_summary,
+  show_col_types = FALSE
+)
+
+qiime_manifest_pe <- read_tsv(
+  paths$qiime_manifest_pe,
+  show_col_types = FALSE
+)
+
+qiime_manifest_r1 <- read_tsv(
+  paths$qiime_manifest_r1,
+  show_col_types = FALSE
+)
+```
+
+
+```{r}
+# ------------------------------------------------------------
+# 7. Run annotation
+# ------------------------------------------------------------
+
+run_info <- tibble(
+  run_id = run_id,
+  pipeline = "ITSdetector",
+  preprocess_method = "itsxpress",
+  read_strategy = "paired",
+  qc_profile = "Q20",
+  taxonomy_reference = "UNITE v10 99",
+  unite_available = file.exists(paths$taxonomy_unite_tsv),
+  blast_available = file.exists(paths$taxonomy_blast_tsv)
+)
+
+print(run_info)
+```
+
+
+```{r}
+# ------------------------------------------------------------
+# 8. Loaded objects summary
+# ------------------------------------------------------------
+
+loaded_objects <- tibble(
+  object_name = c(
+    "feature_table",
+    "repseq",
+    "denoising_stats",
+    "taxonomy_unite",
+    "taxonomy_blast",
+    "blast_evidence",
+    "blast_report",
+    "blast_candidates_top5",
+    "sample_metadata",
+    "samplesheet_validated",
+    "cleanup_qc_summary",
+    "qiime_manifest_pe",
+    "qiime_manifest_r1",
+    "run_info"
+  ),
+  loaded = c(
+    exists("feature_table"),
+    exists("repseq"),
+    !is.null(denoising_stats),
+    exists("taxonomy_unite"),
+    !is.null(taxonomy_blast),
+    !is.null(blast_evidence),
+    !is.null(blast_report),
+    !is.null(blast_candidates_top5),
+    exists("sample_metadata"),
+    exists("samplesheet_validated"),
+    exists("cleanup_qc_summary"),
+    exists("qiime_manifest_pe"),
+    exists("qiime_manifest_r1"),
+    exists("run_info")
+  )
+)
+
+print(loaded_objects)
+
+```
+

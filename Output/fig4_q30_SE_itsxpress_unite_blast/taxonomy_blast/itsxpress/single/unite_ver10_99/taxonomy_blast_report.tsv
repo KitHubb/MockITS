@@ -1,0 +1,12 @@
+Metric	Value
+total_asvs	223
+reconcile_mode	high_confidence_species
+species_min_pident	99.0
+species_min_qcovus	99.0
+species_max_evalue	1e-10
+blast_species_replaced_high_confidence	57
+qiime_retained_ambiguous_blast	32
+qiime_retained_blast_cutoff_fail	3
+qiime_retained_no_blast_species	131
+blast_cutoff_pass	88
+blast_genus_match	71

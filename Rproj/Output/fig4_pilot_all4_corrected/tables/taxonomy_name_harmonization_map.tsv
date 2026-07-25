@@ -1,0 +1,7 @@
+rank	input_name	harmonized_name	note
+Species	Candida_glabrata	Nakaseomyces_glabratus	Current name used for comparison.
+Species	Nakaseomyces_glabrata	Nakaseomyces_glabratus	Spelling harmonization.
+Species	Cryptococcus_neoformans_var_grubii	Cryptococcus_neoformans	Variety collapsed to species level.
+Species	Cryptococcus_neoformans_var._grubii	Cryptococcus_neoformans	Variety collapsed to species level.
+Species	Penicillium_chrysogenum_species_complex	Penicillium_chrysogenum	Species complex collapsed to mock target name.
+Species	Trichophyton_mentagrophytes	Trichophyton_interdigitale	T. mentagrophytes/interdigitale complex collapsed to mock target name.
