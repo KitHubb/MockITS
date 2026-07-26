@@ -1,6 +1,8 @@
 # Raw sequencing data
 *.fastq
 *.fastq.gz
+*.html
+*.zip
 
 # QIIME2 artifacts
 *.qza
