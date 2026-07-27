@@ -1,0 +1,12 @@
+Metric	Value
+total_asvs	475
+reconcile_mode	species_missing_top1_rescue
+species_min_pident	99.0
+species_min_qcovus	99.0
+species_max_evalue	1e-10
+blast_top1_species_rescued_ambiguous_missing_qiime_species	14
+blast_top1_species_rescued_missing_qiime_species	14
+qiime_retained_no_blast_species	380
+qiime_retained_resolved_species	67
+blast_cutoff_pass	95
+blast_genus_match	74
