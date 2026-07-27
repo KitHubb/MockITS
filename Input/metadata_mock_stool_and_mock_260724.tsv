@@ -26,6 +26,3 @@ STZ	stool	NA	Zymo
 4D	mock_only	4	DNeasy
 4Q	mock_only	4	QIAamp
 4Z	mock_only	4	Zymo
-PBSD	PBS_negative_control	NA	DNeasy
-PBSQ	PBS_negative_control	NA	QIAamp
-PBSZ	PBS_negative_control	NA	Zymo

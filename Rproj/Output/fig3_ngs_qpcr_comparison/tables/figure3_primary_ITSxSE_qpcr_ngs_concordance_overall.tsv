@@ -1,0 +1,2 @@
+n	n_sample	n_species	spearman_rho	spearman_p	pearson_r	pearson_p	lm_R2	lm_slope	RMSE_between_qPCR_NGS	MAE_between_qPCR_NGS	mean_abs_difference_pct_point	mean_abs_relative_deviation_pct	comparison
+120	12	10	0.7934874711362898	3.2619349078911176e-27	0.6989468098876933	6.878306005499483e-19	0.48852664305218313	0.572477487380615	0.08539442824662785	0.05713376598590019	5.71337659859002	88.84289705347172	Overall_ITSx_SE

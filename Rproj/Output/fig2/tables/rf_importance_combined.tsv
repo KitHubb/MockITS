@@ -1,0 +1,4 @@
+Variable	IncMSE	outcome
+DNA_kit	22.438306449540526	F1-score
+Paired	-5.5564113750788	F1-score
+Trimm	-9.547794525389566	F1-score

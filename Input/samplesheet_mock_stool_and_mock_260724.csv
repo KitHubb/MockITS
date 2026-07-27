@@ -26,6 +26,3 @@ STZ,HN00251257 ,ITS2,paired,/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper/Inp
 4D,HN00246388 ,ITS2,paired,/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper/Input/Mock/4D_1.fastq.gz,/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper/Input/Mock/4D_2.fastq.gz
 4Q,HN00246388 ,ITS2,paired,/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper/Input/Mock/4Q_1.fastq.gz,/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper/Input/Mock/4Q_2.fastq.gz
 4Z,HN00246388 ,ITS2,paired,/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper/Input/Mock/4Z_1.fastq.gz,/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper/Input/Mock/4Z_2.fastq.gz
-PBSD,HN00246388 ,ITS2,paired,/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper/Input/Mock/PBSD_1.fastq.gz,/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper/Input/Mock/PBSD_2.fastq.gz
-PBSQ,HN00246388 ,ITS2,paired,/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper/Input/Mock/PBSQ_1.fastq.gz,/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper/Input/Mock/PBSQ_2.fastq.gz
-PBSZ,HN00246388 ,ITS2,paired,/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper/Input/Mock/PBSZ_1.fastq.gz,/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper/Input/Mock/PBSZ_2.fastq.gz
