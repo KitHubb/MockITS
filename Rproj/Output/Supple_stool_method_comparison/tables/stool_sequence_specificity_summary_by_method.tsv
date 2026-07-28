@@ -1,0 +1,5 @@
+Trimm	Paired	sequence_set	n_asv	n_sequence	total_reads	median_sequence_length	median_blast_pident	median_blast_qcovus	pct_qiime_species_classified_asv	pct_qiime_phylum_or_higher_asv	pct_asv	pct_reads
+Cutadapt	PE	Cutadapt_only	297	297	377335	306	99.644	100	24.242424242424242	63.2996632996633	100	100
+Cutadapt	SE	Cutadapt_only	292	292	382107	297.5	100	100	18.493150684931507	70.2054794520548	100	100
+ITSxpress	PE	ITSxpress_only	92	92	171232	199	100	100	63.04347826086957	5.434782608695652	100	100
+ITSxpress	SE	ITSxpress_only	89	89	173348	173	100	100	58.42696629213483	10.112359550561797	100	100

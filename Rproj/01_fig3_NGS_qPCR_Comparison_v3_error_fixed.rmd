@@ -1,0 +1,1214 @@
+---
+title: "Figure 3: NGS and qPCR comparison using customDB"
+author: "Kim So-Yeon"
+date: "2026-07-27"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 10,
+  fig.height = 6,
+  dpi = 300
+)
+options(stringsAsFactors = FALSE)
+```
+
+# 1. Analysis purpose
+
+This analysis compares qPCR-based ITS2 quantification and customDB-based amplicon sequencing results in the same mock-only cell mix samples.
+
+Main points:
+
+- The NGS loading structure follows the current `01_fig2_CompareMock_260727.Rmd` workflow.
+- Only customDB BLAST taxonomy results are used for NGS.
+- qPCR data are provided as a pre-converted long-format table from Sheet2 of the Excel file.
+- The comparison focuses on kit-dependent differences and qPCR-NGS bias.
+- Concordance is reported using Spearman's rho, Pearson's r, linear-model R², RMSE, and MAE.
+- Figure 3C uses `Bias` or `Relative deviation`, not `Detection rate`.
+
+# 2. Load packages and paths
+
+```{r load-packages-paths}
+library(tidyverse)
+library(qiime2R)
+library(ggplot2)
+library(ggh4x)
+library(vegan)
+library(scales)
+library(patchwork)
+```
+
+```{r project-paths}
+project_dir <- "/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper"
+rproj_dir <- file.path(project_dir, "Rproj")
+
+analysis_dir <- file.path(rproj_dir, "Output", "fig3_ngs_qpcr_comparison")
+table_dir <- file.path(analysis_dir, "tables")
+figure_dir <- file.path(analysis_dir, "figures")
+
+dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
+```
+
+```{r helper-paths}
+first_existing_path <- function(paths) {
+  hit <- paths[file.exists(paths)]
+
+  if (length(hit) == 0) {
+    stop("Input file was not found:\n", paste(paths, collapse = "\n"))
+  }
+
+  hit[[1]]
+}
+```
+
+# 3. Current NGS input paths
+
+```{r ngs-paths}
+run_tbl <- tibble::tribble(
+  ~run_id,                                           ~preprocess_method, ~read_strategy, ~preprocess_dir, ~read_dir,
+  "fig4_q30_PE_itsxpress_unite_blast_top1_rescue",  "ITSxpress",        "PE",           "itsxpress",     "paired",
+  "fig4_q30_SE_itsxpress_unite_blast_top1_rescue",  "ITSxpress",        "SE",           "itsxpress",     "single",
+  "fig4_q30_PE_cutadapt_unite_blast_top1_rescue",   "Cutadapt",         "PE",           "cutadapt",      "paired",
+  "fig4_q30_SE_cutadapt_unite_blast_top1_rescue",   "Cutadapt",         "SE",           "cutadapt",      "single"
+) |>
+  dplyr::mutate(
+    run_dir = file.path(project_dir, "Output", run_id),
+    pipeline = "ITSdetector",
+    Paired = read_strategy,
+    Trimm = preprocess_method,
+    table_qza = file.path(run_dir, "dada2", preprocess_dir, read_dir, "table.qza"),
+    repseq_qza = file.path(run_dir, "dada2", preprocess_dir, read_dir, "repseq.qza"),
+    denoising_stats_qza = file.path(run_dir, "dada2", preprocess_dir, read_dir, "denoising_stats.qza"),
+    taxonomy_custom = file.path(run_dir, "taxonomy_blast", preprocess_dir, read_dir, "CustomDB", "taxonomy.tsv"),
+    taxonomy_custom_evidence = file.path(run_dir, "taxonomy_blast", preprocess_dir, read_dir, "CustomDB", "taxonomy_customdb_evidence.tsv"),
+    cleanup_qc_summary = file.path(run_dir, "cleanup_qc", "cleanup_qc_summary.tsv")
+  )
+
+sample_metadata_path <- file.path(project_dir, "Input", "metadata_mock_stool_and_mock_260724.tsv")
+
+qpcr_long_path <- first_existing_path(c(
+  file.path("../Input/qPCR/figure3_qpcr_sheet2_long.tsv"),
+  file.path(rproj_dir, "Input", "figure3_qpcr_sheet2_long.tsv"),
+  file.path(rproj_dir, "figure3_qpcr_sheet2_long.tsv"),
+  "figure3_qpcr_sheet2_long.tsv",
+  "/mnt/data/figure3_qpcr_sheet2_long.tsv"
+))
+
+path_check <- run_tbl |>
+  dplyr::select(run_id, table_qza, taxonomy_custom) |>
+  tidyr::pivot_longer(
+    cols = -run_id,
+    names_to = "file_key",
+    values_to = "path"
+  ) |>
+  dplyr::bind_rows(
+    tibble::tibble(
+      run_id = c("metadata", "qPCR"),
+      file_key = c("sample_metadata", "qPCR_long"),
+      path = c(sample_metadata_path, qpcr_long_path)
+    )
+  ) |>
+  dplyr::mutate(exists = file.exists(path))
+
+missing_required <- path_check |>
+  dplyr::filter(!exists)
+
+missing_required
+
+if (nrow(missing_required) > 0) {
+  stop("Missing required input files:\n", paste(missing_required$path, collapse = "\n"))
+}
+```
+
+# 4. Expected mock composition and plotting style
+
+```{r expected-composition}
+expected_species <- c(
+  "Aspergillus_fumigatus",
+  "Cryptococcus_neoformans",
+  "Trichophyton_interdigitale",
+  "Penicillium_chrysogenum",
+  "Fusarium_keratoplasticum",
+  "Candida_albicans",
+  "Nakaseomyces_glabratus",
+  "Malassezia_globosa",
+  "Saccharomyces_cerevisiae",
+  "Cutaneotrichosporon_dermatis"
+)
+
+expected_genus <- c(
+  "Aspergillus", "Cryptococcus", "Trichophyton", "Penicillium", "Fusarium",
+  "Candida", "Nakaseomyces", "Malassezia", "Saccharomyces", "Cutaneotrichosporon"
+)
+
+expected_truth <- dplyr::bind_rows(
+  tibble::tibble(taxonomic_rank = "Species", taxon = expected_species, expected_abundance = 0.1),
+  tibble::tibble(taxonomic_rank = "Genus", taxon = expected_genus, expected_abundance = 0.1)
+)
+
+readr::write_tsv(expected_truth, file.path(table_dir, "expected_mock_composition.tsv"))
+```
+
+```{r plotting-style}
+kit_colors <- c(
+  "DNeasy" = "#66C2A5",
+  "QIAamp" = "#FC8D62",
+  "Zymo" = "#8DA0CB"
+)
+
+method_colors <- c(
+  "ITSx_PE" = "#66C2A5",
+  "ITSx_SE" = "#FC8D62",
+  "Cutadapt_PE" = "#8DA0CB",
+  "Cutadapt_SE" = "#E78AC3"
+)
+
+taxa_colors <- c(
+  "Aspergillus_fumigatus" = "#E41A1CFF",
+  "Candida_albicans" = "#377EB8FF",
+  "Cryptococcus_neoformans" = "#4DAF4AFF",
+  "Cutaneotrichosporon_dermatis" = "#984EA3FF",
+  "Fusarium_keratoplasticum" = "#FF7F00FF",
+  "Malassezia_globosa" = "#D9C300FF",
+  "Nakaseomyces_glabratus" = "#A65628FF",
+  "Penicillium_chrysogenum" = "#f55cacFF",
+  "Saccharomyces_cerevisiae" = "#E6AB02FF",
+  "Trichophyton_interdigitale" = "#1B9E77FF",
+  "Other" = "#999999FF"
+)
+
+fig_theme <- function(base_size = 12) {
+  ggplot2::theme_classic(base_size = base_size) +
+    ggplot2::theme(
+      panel.background = ggplot2::element_blank(),
+      plot.background = ggplot2::element_blank(),
+      panel.grid = ggplot2::element_blank(),
+      axis.line = ggplot2::element_line(color = "black", linewidth = 0.5),
+      axis.ticks = ggplot2::element_line(color = "black", linewidth = 0.5),
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, vjust = 1, color = "black"),
+      axis.text.y = ggplot2::element_text(color = "black"),
+      strip.background = ggplot2::element_blank(),
+      strip.text = ggplot2::element_text(face = "bold", color = "black"),
+      legend.title = ggplot2::element_blank()
+    )
+}
+```
+
+# 5. Helper functions for NGS data
+
+```{r ngs-helper-functions}
+clean_taxon_value <- function(x) {
+  x |>
+    as.character() |>
+    stringr::str_replace_all("^.__", "") |>
+    stringr::str_replace_all(" ", "_") |>
+    stringr::str_replace_all(";.*$", "") |>
+    stringr::str_replace_all("^_+|_+$", "") |>
+    dplyr::na_if("")
+}
+
+harmonize_taxon <- function(x, rank = "Species") {
+  x1 <- clean_taxon_value(x)
+
+  dplyr::case_when(
+    rank == "Species" & x1 %in% c("Candida_glabrata", "Nakaseomyces_glabrata") ~ "Nakaseomyces_glabratus",
+    rank == "Species" & x1 == "Penicillium notatum" ~ "Penicillium_chrysogenum",
+    TRUE ~ x1
+  )
+}
+
+parse_qiime_taxon <- function(taxon_string, rank_index) {
+  split_mat <- stringr::str_split_fixed(taxon_string, ";", 7)
+  clean_taxon_value(split_mat[, rank_index])
+}
+
+read_taxonomy_table <- function(path, taxonomy_method_label) {
+  tax <- readr::read_tsv(path, show_col_types = FALSE)
+
+  if ("Feature ID" %in% colnames(tax)) {
+    tax <- dplyr::rename(tax, feature_id = `Feature ID`)
+  }
+
+  if ("ASV" %in% colnames(tax)) {
+    tax <- dplyr::rename(tax, feature_id = ASV)
+  }
+
+  if (!"feature_id" %in% colnames(tax)) {
+    stop("Taxonomy table has no Feature ID or ASV column: ", path)
+  }
+
+  if (!"Genus" %in% colnames(tax) && "Taxon" %in% colnames(tax)) {
+    tax <- dplyr::mutate(tax, Genus = parse_qiime_taxon(Taxon, 6))
+  }
+
+  if (!"Species" %in% colnames(tax) && "Taxon" %in% colnames(tax)) {
+    tax <- dplyr::mutate(tax, Species = parse_qiime_taxon(Taxon, 7))
+  }
+
+  if (!all(c("Genus", "Species") %in% colnames(tax))) {
+    stop("Taxonomy table must contain Genus and Species columns or a parsable Taxon column: ", path)
+  }
+
+  if (!"Taxon" %in% colnames(tax)) {
+    tax <- dplyr::mutate(tax, Taxon = NA_character_)
+  }
+
+  tax |>
+    dplyr::transmute(
+      feature_id = as.character(feature_id),
+      taxonomy_method = taxonomy_method_label,
+      Genus = harmonize_taxon(Genus, rank = "Genus"),
+      Species = harmonize_taxon(Species, rank = "Species"),
+      taxon_string = as.character(Taxon)
+    ) |>
+    dplyr::mutate(
+      Genus = dplyr::if_else(is.na(Genus) | stringr::str_detect(Genus, "_g$"), "Unclassified", Genus),
+      Species = dplyr::if_else(is.na(Species) | stringr::str_detect(Species, "_g$|_s$"), "Unclassified", Species)
+    )
+}
+
+standardize_metadata <- function(metadata_df) {
+  meta <- metadata_df
+
+  if ("sample" %in% colnames(meta) && !"sample_id" %in% colnames(meta)) {
+    meta <- dplyr::rename(meta, sample_id = sample)
+  }
+
+  if ("kit_code" %in% colnames(meta) && !"kit" %in% colnames(meta)) {
+    meta <- dplyr::rename(meta, kit = kit_code)
+  }
+
+  meta |>
+    dplyr::mutate(
+      sample_id = as.character(sample_id),
+      sample_id = stringr::str_replace(sample_id, "^X", ""),
+      kit = as.character(kit),
+      DNA_kit = dplyr::case_when(
+        kit %in% c("D", "DNeasy") ~ "DNeasy",
+        kit %in% c("Q", "QIAamp", "QIAStool") ~ "QIAamp",
+        kit %in% c("Z", "Zymo", "ZymoB") ~ "Zymo",
+        TRUE ~ as.character(kit)
+      ),
+      replicate = as.character(replicate),
+      matrix_type = as.character(matrix_type)
+    ) |>
+    dplyr::select(sample_id, DNA_kit, replicate, matrix_type, dplyr::everything()) |>
+    dplyr::distinct(sample_id, .keep_all = TRUE)
+}
+
+feature_table_to_long <- function(feature_table_obj, taxonomy_feature_ids) {
+  ft <- as.data.frame(feature_table_obj)
+
+  row_match <- sum(rownames(ft) %in% taxonomy_feature_ids)
+  col_match <- sum(colnames(ft) %in% taxonomy_feature_ids)
+
+  if (col_match > row_match) {
+    ft <- t(ft) |>
+      as.data.frame()
+  }
+
+  ft |>
+    tibble::rownames_to_column("feature_id") |>
+    tidyr::pivot_longer(
+      cols = -feature_id,
+      names_to = "sample_id",
+      values_to = "count"
+    ) |>
+    dplyr::mutate(
+      feature_id = as.character(feature_id),
+      sample_id = stringr::str_replace(as.character(sample_id), "^X", ""),
+      count = as.numeric(count)
+    )
+}
+
+safe_cor_value <- function(x, y, method = "spearman") {
+  ok <- stats::complete.cases(x, y)
+
+  if (sum(ok) < 3) {
+    return(NA_real_)
+  }
+
+  if (stats::sd(x[ok]) == 0 || stats::sd(y[ok]) == 0) {
+    return(NA_real_)
+  }
+
+  suppressWarnings(stats::cor(x[ok], y[ok], method = method))
+}
+
+safe_cor_p <- function(x, y, method = "spearman") {
+  ok <- stats::complete.cases(x, y)
+
+  if (sum(ok) < 3) {
+    return(NA_real_)
+  }
+
+  if (stats::sd(x[ok]) == 0 || stats::sd(y[ok]) == 0) {
+    return(NA_real_)
+  }
+
+  suppressWarnings(stats::cor.test(x[ok], y[ok], method = method, exact = FALSE)$p.value)
+}
+
+safe_lm_r2 <- function(x, y) {
+  ok <- stats::complete.cases(x, y)
+
+  if (sum(ok) < 3) {
+    return(NA_real_)
+  }
+
+  if (stats::sd(x[ok]) == 0 || stats::sd(y[ok]) == 0) {
+    return(NA_real_)
+  }
+
+  summary(stats::lm(y[ok] ~ x[ok]))$r.squared
+}
+
+safe_lm_slope <- function(x, y) {
+  ok <- stats::complete.cases(x, y)
+
+  if (sum(ok) < 3) {
+    return(NA_real_)
+  }
+
+  if (stats::sd(x[ok]) == 0 || stats::sd(y[ok]) == 0) {
+    return(NA_real_)
+  }
+
+  stats::coef(stats::lm(y[ok] ~ x[ok]))[[2]]
+}
+```
+
+# 6. Load and prepare customDB NGS data
+
+```{r load-ngs-data}
+sample_metadata <-
+  readr::read_tsv(sample_metadata_path, show_col_types = FALSE) |>
+  standardize_metadata()
+
+read_one_run <- function(run_row) {
+  run_row <- dplyr::slice(run_row, 1)
+
+  feature_table_i <- qiime2R::read_qza(run_row$table_qza[[1]])$data
+
+  taxonomy_custom_i <-
+    read_taxonomy_table(run_row$taxonomy_custom[[1]], "CustomDB BLAST") |>
+    dplyr::mutate(run_id = run_row$run_id[[1]])
+
+  taxonomy_all_i <- taxonomy_custom_i |>
+    dplyr::mutate(
+      preprocess_method = run_row$preprocess_method[[1]],
+      read_strategy = run_row$read_strategy[[1]],
+      Paired = run_row$Paired[[1]],
+      Trimm = run_row$Trimm[[1]]
+    )
+
+  feature_long_i <-
+    feature_table_to_long(feature_table_i, unique(taxonomy_all_i$feature_id)) |>
+    dplyr::left_join(sample_metadata, by = "sample_id") |>
+    dplyr::mutate(
+      run_id = run_row$run_id[[1]],
+      pipeline = run_row$pipeline[[1]],
+      preprocess_method = run_row$preprocess_method[[1]],
+      read_strategy = run_row$read_strategy[[1]],
+      Paired = run_row$Paired[[1]],
+      Trimm = run_row$Trimm[[1]]
+    )
+
+  sample_depth_i <- feature_long_i |>
+    dplyr::group_by(run_id, sample_id, preprocess_method, read_strategy) |>
+    dplyr::summarise(
+      total_reads = sum(count, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  list(
+    taxonomy_all = taxonomy_all_i,
+    feature_long = feature_long_i,
+    sample_depth = sample_depth_i
+  )
+}
+
+loaded_runs <- run_tbl |>
+  split(seq_len(nrow(run_tbl))) |>
+  purrr::map(read_one_run)
+
+taxonomy_all <- loaded_runs |>
+  purrr::map("taxonomy_all") |>
+  dplyr::bind_rows()
+
+feature_long <- loaded_runs |>
+  purrr::map("feature_long") |>
+  dplyr::bind_rows()
+
+sample_depth <- loaded_runs |>
+  purrr::map("sample_depth") |>
+  dplyr::bind_rows()
+
+readr::write_tsv(taxonomy_all, file.path(table_dir, "figure3_taxonomy_all_customdb.tsv"))
+readr::write_tsv(feature_long, file.path(table_dir, "figure3_feature_table_asv_long_customdb.tsv"))
+readr::write_tsv(sample_depth, file.path(table_dir, "figure3_sample_depth_customdb.tsv"))
+```
+
+```{r create-ngs-benchmark-long}
+taxa_abundance <- feature_long |>
+  dplyr::select(
+    run_id,
+    feature_id,
+    sample_id,
+    count,
+    DNA_kit,
+    replicate,
+    matrix_type,
+    pipeline,
+    preprocess_method,
+    read_strategy,
+    Paired,
+    Trimm
+  ) |>
+  dplyr::filter(matrix_type == "mock_only") |>
+  dplyr::left_join(
+    taxonomy_all,
+    by = c(
+      "run_id",
+      "feature_id",
+      "preprocess_method",
+      "read_strategy",
+      "Paired",
+      "Trimm"
+    )
+  ) |>
+  dplyr::mutate(
+    BLAST = "CustomDB_BLAST",
+    Genus = dplyr::if_else(is.na(Genus) | Genus == "", "Unclassified", Genus),
+    Species = dplyr::if_else(is.na(Species) | Species == "", "Unclassified", Species)
+  ) |>
+  tidyr::pivot_longer(
+    cols = c(Genus, Species),
+    names_to = "taxonomic_rank",
+    values_to = "taxon"
+  ) |>
+  dplyr::mutate(taxon = dplyr::if_else(is.na(taxon) | taxon == "", "Unclassified", taxon)) |>
+  dplyr::group_by(
+    run_id,
+    sample_id,
+    DNA_kit,
+    replicate,
+    matrix_type,
+    pipeline,
+    preprocess_method,
+    read_strategy,
+    taxonomy_method,
+    BLAST,
+    Paired,
+    Trimm,
+    taxonomic_rank,
+    taxon
+  ) |>
+  dplyr::summarise(count = sum(count, na.rm = TRUE), .groups = "drop") |>
+  dplyr::left_join(
+    sample_depth,
+    by = c("run_id", "sample_id", "preprocess_method", "read_strategy")
+  ) |>
+  dplyr::mutate(
+    total_reads = tidyr::replace_na(total_reads, 0),
+    relative_abundance = dplyr::if_else(total_reads > 0, count / total_reads, 0)
+  )
+
+sample_method_grid <- taxa_abundance |>
+  dplyr::distinct(
+    run_id,
+    sample_id,
+    DNA_kit,
+    replicate,
+    matrix_type,
+    pipeline,
+    preprocess_method,
+    read_strategy,
+    taxonomy_method,
+    BLAST,
+    Paired,
+    Trimm
+  )
+
+taxon_universe <- dplyr::bind_rows(
+  taxa_abundance |> dplyr::distinct(taxonomic_rank, taxon),
+  expected_truth |> dplyr::distinct(taxonomic_rank, taxon)
+) |>
+  dplyr::distinct(taxonomic_rank, taxon)
+
+benchmark_long <- sample_method_grid |>
+  tidyr::crossing(taxon_universe) |>
+  dplyr::left_join(expected_truth, by = c("taxonomic_rank", "taxon")) |>
+  dplyr::mutate(
+    expected_abundance = dplyr::case_when(
+      matrix_type == "mock_only" & !is.na(expected_abundance) ~ expected_abundance,
+      TRUE ~ 0
+    )
+  ) |>
+  dplyr::left_join(
+    taxa_abundance,
+    by = c(
+      "run_id",
+      "sample_id",
+      "DNA_kit",
+      "replicate",
+      "matrix_type",
+      "pipeline",
+      "preprocess_method",
+      "read_strategy",
+      "taxonomy_method",
+      "BLAST",
+      "Paired",
+      "Trimm",
+      "taxonomic_rank",
+      "taxon"
+    )
+  ) |>
+  dplyr::mutate(
+    count = tidyr::replace_na(count, 0),
+    total_reads = tidyr::replace_na(total_reads, 0),
+    relative_abundance = tidyr::replace_na(relative_abundance, 0),
+    Method = paste(Trimm, Paired, sep = "_"),
+    Method = dplyr::recode(
+      Method,
+      "ITSxpress_PE" = "ITSx_PE",
+      "ITSxpress_SE" = "ITSx_SE",
+      "Cutadapt_PE" = "Cutadapt_PE",
+      "Cutadapt_SE" = "Cutadapt_SE"
+    ),
+    DNA_kit = factor(DNA_kit, levels = c("DNeasy", "QIAamp", "Zymo")),
+    Method = factor(Method, levels = c("ITSx_PE", "ITSx_SE", "Cutadapt_PE", "Cutadapt_SE"))
+  )
+
+benchmark_long_species <- benchmark_long |>
+  dplyr::filter(taxonomic_rank == "Species") |>
+  dplyr::mutate(taxon = harmonize_taxon(taxon, rank = "Species"))
+
+ngs_species_complete <- benchmark_long_species |>
+  dplyr::filter(taxon %in% expected_species) |>
+  dplyr::group_by(
+    run_id,
+    sample_id,
+    DNA_kit,
+    replicate,
+    matrix_type,
+    taxonomy_method,
+    Method,
+    Trimm,
+    Paired,
+    taxon
+  ) |>
+  dplyr::summarise(
+    ngs_relative_abundance = sum(relative_abundance, na.rm = TRUE),
+    expected_abundance = dplyr::first(expected_abundance),
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(taxon = factor(taxon, levels = expected_species))
+
+readr::write_tsv(benchmark_long_species, file.path(table_dir, "figure3_benchmark_long_species_customdb.tsv"))
+readr::write_tsv(ngs_species_complete, file.path(table_dir, "figure3_ngs_species_customdb_long.tsv"))
+
+ngs_species_complete
+```
+
+# 7. Load pre-converted qPCR long-format data
+
+```{r load-qpcr-long}
+# qPCR long-format table을 불러온 뒤 필수 컬럼을 보정
+qpcr_raw <- readr::read_tsv(qpcr_long_path, show_col_types = FALSE)
+
+# 선택 컬럼이 없을 때도 downstream 코드가 깨지지 않도록 기본 컬럼 생성
+if (!"qPCR_total" %in% colnames(qpcr_raw)) {
+  qpcr_raw <- qpcr_raw |>
+    dplyr::mutate(qPCR_total = NA_real_)
+}
+
+if (!"qPCR_relative_abundance" %in% colnames(qpcr_raw)) {
+  qpcr_raw <- qpcr_raw |>
+    dplyr::mutate(qPCR_relative_abundance = NA_real_)
+}
+
+if (!"expected_abundance" %in% colnames(qpcr_raw)) {
+  qpcr_raw <- qpcr_raw |>
+    dplyr::mutate(expected_abundance = 0.1)
+}
+
+if (!"qPCR_species_label" %in% colnames(qpcr_raw)) {
+  qpcr_raw <- qpcr_raw |>
+    dplyr::mutate(qPCR_species_label = as.character(taxon))
+}
+
+# qPCR long-format table 정리
+qpcr_long <- qpcr_raw |>
+  dplyr::mutate(
+    sample_id = stringr::str_replace(as.character(sample_id), "^X", ""),
+    DNA_kit = dplyr::case_when(
+      DNA_kit %in% c("DNeasy", "DNeasy Kit") ~ "DNeasy",
+      DNA_kit %in% c("QIAamp", "QIAStool", "QIAStool Kit") ~ "QIAamp",
+      DNA_kit %in% c("Zymo", "ZymoB", "ZymoB Kit") ~ "Zymo",
+      TRUE ~ as.character(DNA_kit)
+    ),
+    replicate = as.character(replicate),
+    matrix_type = as.character(matrix_type),
+    taxon = harmonize_taxon(taxon, rank = "Species"),
+    qPCR_species_label = as.character(qPCR_species_label),
+    qPCR_value = as.numeric(qPCR_value),
+    qPCR_total = as.numeric(qPCR_total),
+    qPCR_relative_abundance = as.numeric(qPCR_relative_abundance),
+    expected_abundance = dplyr::if_else(
+      is.na(as.numeric(expected_abundance)),
+      0.1,
+      as.numeric(expected_abundance)
+    )
+  ) |>
+  dplyr::filter(matrix_type == "mock_only") |>
+  dplyr::filter(taxon %in% expected_species) |>
+  dplyr::group_by(sample_id) |>
+  dplyr::mutate(
+    calculated_qPCR_total = sum(qPCR_value, na.rm = TRUE),
+    qPCR_total = dplyr::case_when(
+      !is.na(qPCR_total) ~ qPCR_total,
+      calculated_qPCR_total > 0 ~ calculated_qPCR_total,
+      TRUE ~ NA_real_
+    ),
+    qPCR_relative_abundance = dplyr::case_when(
+      !is.na(qPCR_relative_abundance) ~ qPCR_relative_abundance,
+      calculated_qPCR_total > 0 ~ qPCR_value / calculated_qPCR_total,
+      TRUE ~ NA_real_
+    )
+  ) |>
+  dplyr::ungroup() |>
+  dplyr::select(-calculated_qPCR_total) |>
+  dplyr::mutate(
+    qPCR_bias = qPCR_relative_abundance - expected_abundance,
+    qPCR_relative_deviation_pct = qPCR_bias / expected_abundance * 100,
+    DNA_kit = factor(DNA_kit, levels = c("DNeasy", "QIAamp", "Zymo")),
+    taxon = factor(taxon, levels = expected_species)
+  )
+
+readr::write_tsv(qpcr_long, file.path(table_dir, "figure3_qpcr_sheet2_long_used.tsv"))
+
+qpcr_long
+```
+
+# 8. Merge qPCR and NGS data
+
+```{r merge-ngs-qpcr}
+ngs_qpcr_pair <- ngs_species_complete |>
+  dplyr::left_join(
+    qpcr_long |>
+      dplyr::select(
+        sample_id,
+        DNA_kit,
+        replicate,
+        matrix_type,
+        taxon,
+        qPCR_species_label,
+        qPCR_value,
+        qPCR_total,
+        qPCR_relative_abundance
+      ),
+    by = c("sample_id", "DNA_kit", "replicate", "matrix_type", "taxon")
+  ) |>
+  dplyr::mutate(
+    qPCR_NGS_difference = ngs_relative_abundance - qPCR_relative_abundance,
+    absolute_qPCR_NGS_difference = abs(qPCR_NGS_difference),
+    ngs_bias = ngs_relative_abundance - expected_abundance,
+    qPCR_bias = qPCR_relative_abundance - expected_abundance,
+    ngs_relative_deviation_pct = ngs_bias / expected_abundance * 100,
+    qPCR_relative_deviation_pct = qPCR_bias / expected_abundance * 100
+  )
+
+missing_qpcr_join <- ngs_qpcr_pair |>
+  dplyr::filter(is.na(qPCR_relative_abundance)) |>
+  dplyr::distinct(sample_id, DNA_kit, replicate, taxon)
+
+readr::write_tsv(ngs_qpcr_pair, file.path(table_dir, "figure3_ngs_qpcr_paired_long.tsv"))
+readr::write_tsv(missing_qpcr_join, file.path(table_dir, "figure3_missing_qpcr_join_rows.tsv"))
+
+missing_qpcr_join
+ngs_qpcr_pair
+```
+
+# 9. qPCR-NGS concordance
+
+```{r concordance-tables}
+concordance_by_kit_method <- ngs_qpcr_pair |>
+  dplyr::group_by(DNA_kit, Method) |>
+  dplyr::summarise(
+    n = sum(stats::complete.cases(qPCR_relative_abundance, ngs_relative_abundance)),
+    spearman_rho = safe_cor_value(qPCR_relative_abundance, ngs_relative_abundance, method = "spearman"),
+    spearman_p = safe_cor_p(qPCR_relative_abundance, ngs_relative_abundance, method = "spearman"),
+    pearson_r = safe_cor_value(qPCR_relative_abundance, ngs_relative_abundance, method = "pearson"),
+    pearson_p = safe_cor_p(qPCR_relative_abundance, ngs_relative_abundance, method = "pearson"),
+    lm_R2 = safe_lm_r2(qPCR_relative_abundance, ngs_relative_abundance),
+    lm_slope = safe_lm_slope(qPCR_relative_abundance, ngs_relative_abundance),
+    RMSE_between_qPCR_NGS = sqrt(mean((ngs_relative_abundance - qPCR_relative_abundance)^2, na.rm = TRUE)),
+    MAE_between_qPCR_NGS = mean(abs(ngs_relative_abundance - qPCR_relative_abundance), na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(Method, dplyr::desc(spearman_rho))
+
+concordance_by_kit <- ngs_qpcr_pair |>
+  dplyr::group_by(DNA_kit) |>
+  dplyr::summarise(
+    n = sum(stats::complete.cases(qPCR_relative_abundance, ngs_relative_abundance)),
+    spearman_rho = safe_cor_value(qPCR_relative_abundance, ngs_relative_abundance, method = "spearman"),
+    spearman_p = safe_cor_p(qPCR_relative_abundance, ngs_relative_abundance, method = "spearman"),
+    pearson_r = safe_cor_value(qPCR_relative_abundance, ngs_relative_abundance, method = "pearson"),
+    pearson_p = safe_cor_p(qPCR_relative_abundance, ngs_relative_abundance, method = "pearson"),
+    lm_R2 = safe_lm_r2(qPCR_relative_abundance, ngs_relative_abundance),
+    lm_slope = safe_lm_slope(qPCR_relative_abundance, ngs_relative_abundance),
+    RMSE_between_qPCR_NGS = sqrt(mean((ngs_relative_abundance - qPCR_relative_abundance)^2, na.rm = TRUE)),
+    MAE_between_qPCR_NGS = mean(abs(ngs_relative_abundance - qPCR_relative_abundance), na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(dplyr::desc(spearman_rho))
+
+concordance_by_trimm <- ngs_qpcr_pair |>
+  dplyr::group_by(Trimm) |>
+  dplyr::summarise(
+    n = sum(stats::complete.cases(qPCR_relative_abundance, ngs_relative_abundance)),
+    spearman_rho = safe_cor_value(qPCR_relative_abundance, ngs_relative_abundance, method = "spearman"),
+    spearman_p = safe_cor_p(qPCR_relative_abundance, ngs_relative_abundance, method = "spearman"),
+    pearson_r = safe_cor_value(qPCR_relative_abundance, ngs_relative_abundance, method = "pearson"),
+    pearson_p = safe_cor_p(qPCR_relative_abundance, ngs_relative_abundance, method = "pearson"),
+    lm_R2 = safe_lm_r2(qPCR_relative_abundance, ngs_relative_abundance),
+    lm_slope = safe_lm_slope(qPCR_relative_abundance, ngs_relative_abundance),
+    RMSE_between_qPCR_NGS = sqrt(mean((ngs_relative_abundance - qPCR_relative_abundance)^2, na.rm = TRUE)),
+    MAE_between_qPCR_NGS = mean(abs(ngs_relative_abundance - qPCR_relative_abundance), na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(dplyr::desc(spearman_rho))
+
+concordance_by_paired <- ngs_qpcr_pair |>
+  dplyr::group_by(Paired) |>
+  dplyr::summarise(
+    n = sum(stats::complete.cases(qPCR_relative_abundance, ngs_relative_abundance)),
+    spearman_rho = safe_cor_value(qPCR_relative_abundance, ngs_relative_abundance, method = "spearman"),
+    spearman_p = safe_cor_p(qPCR_relative_abundance, ngs_relative_abundance, method = "spearman"),
+    pearson_r = safe_cor_value(qPCR_relative_abundance, ngs_relative_abundance, method = "pearson"),
+    pearson_p = safe_cor_p(qPCR_relative_abundance, ngs_relative_abundance, method = "pearson"),
+    lm_R2 = safe_lm_r2(qPCR_relative_abundance, ngs_relative_abundance),
+    lm_slope = safe_lm_slope(qPCR_relative_abundance, ngs_relative_abundance),
+    RMSE_between_qPCR_NGS = sqrt(mean((ngs_relative_abundance - qPCR_relative_abundance)^2, na.rm = TRUE)),
+    MAE_between_qPCR_NGS = mean(abs(ngs_relative_abundance - qPCR_relative_abundance), na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(dplyr::desc(spearman_rho))
+
+concordance_overview <- dplyr::bind_rows(
+  concordance_by_kit |>
+    dplyr::transmute(comparison_level = "DNA kit", group = as.character(DNA_kit), n, spearman_rho, spearman_p, pearson_r, pearson_p, lm_R2, lm_slope, RMSE_between_qPCR_NGS, MAE_between_qPCR_NGS),
+  concordance_by_trimm |>
+    dplyr::transmute(comparison_level = "Trimming", group = as.character(Trimm), n, spearman_rho, spearman_p, pearson_r, pearson_p, lm_R2, lm_slope, RMSE_between_qPCR_NGS, MAE_between_qPCR_NGS),
+  concordance_by_paired |>
+    dplyr::transmute(comparison_level = "Read strategy", group = as.character(Paired), n, spearman_rho, spearman_p, pearson_r, pearson_p, lm_R2, lm_slope, RMSE_between_qPCR_NGS, MAE_between_qPCR_NGS)
+) |>
+  dplyr::mutate(comparison_level = factor(comparison_level, levels = c("DNA kit", "Trimming", "Read strategy")))
+
+readr::write_tsv(concordance_by_kit_method, file.path(table_dir, "figure3_qpcr_ngs_concordance_by_kit_method.tsv"))
+readr::write_tsv(concordance_by_kit, file.path(table_dir, "figure3_qpcr_ngs_concordance_by_kit.tsv"))
+readr::write_tsv(concordance_by_trimm, file.path(table_dir, "figure3_qpcr_ngs_concordance_by_trimming.tsv"))
+readr::write_tsv(concordance_by_paired, file.path(table_dir, "figure3_qpcr_ngs_concordance_by_read_strategy.tsv"))
+readr::write_tsv(concordance_overview, file.path(table_dir, "figure3_qpcr_ngs_concordance_overview.tsv"))
+
+concordance_by_kit_method
+concordance_by_kit
+concordance_by_trimm
+concordance_by_paired
+concordance_overview
+```
+
+```{r figure3a-scatter, fig.width=14, fig.height=9}
+concordance_label_df <- concordance_by_kit_method |>
+  dplyr::mutate(
+    label = paste0(
+      "rho = ", sprintf("%.2f", spearman_rho),
+      "\nR² = ", sprintf("%.2f", lm_R2)
+    )
+  )
+
+p_qpcr_ngs_scatter <- ggplot2::ggplot(
+  ngs_qpcr_pair,
+  ggplot2::aes(x = qPCR_relative_abundance, y = ngs_relative_abundance, color = taxon)
+) +
+  ggplot2::geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "grey40", linewidth = 0.5) +
+  ggplot2::geom_point(size = 2.2, alpha = 0.85) +
+  ggplot2::geom_smooth(method = "lm", se = FALSE, linewidth = 0.5, color = "black") +
+  ggplot2::geom_text(
+    data = concordance_label_df,
+    ggplot2::aes(x = Inf, y = Inf, label = label),
+    inherit.aes = FALSE,
+    hjust = 1.05,
+    vjust = 1.15,
+    size = 3
+  ) +
+  ggplot2::scale_color_manual(values = taxa_colors[expected_species], drop = FALSE) +
+  ggplot2::scale_x_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, NA)) +
+  ggplot2::scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, NA)) +
+  ggh4x::facet_grid2(DNA_kit ~ Method, scales = "free") +
+  ggplot2::labs(
+    x = "qPCR ITS2 relative abundance (%)",
+    y = "NGS relative abundance (%)",
+    color = "Species"
+  ) +
+  fig_theme(base_size = 11) +
+  ggplot2::theme(
+    legend.position = "bottom",
+    legend.text = ggplot2::element_text(size = 7),
+    legend.key.size = grid::unit(0.35, "cm")
+  )
+
+p_qpcr_ngs_scatter
+
+ggplot2::ggsave(
+  file.path(figure_dir, "figure3A_qpcr_ngs_species_scatter_by_kit_method.png"),
+  p_qpcr_ngs_scatter,
+  width = 14,
+  height = 9,
+  dpi = 300
+)
+
+ggplot2::ggsave(
+  file.path(figure_dir, "figure3A_qpcr_ngs_species_scatter_by_kit_method.pdf"),
+  p_qpcr_ngs_scatter,
+  width = 14,
+  height = 9
+)
+```
+
+```{r figure3b-concordance-barplot, fig.width=10, fig.height=5}
+p_concordance <- ggplot2::ggplot(
+  concordance_by_kit_method,
+  ggplot2::aes(x = DNA_kit, y = spearman_rho, fill = DNA_kit)
+) +
+  ggplot2::geom_col(width = 0.65, color = "black", linewidth = 0.25) +
+  ggplot2::geom_text(
+    ggplot2::aes(label = sprintf("%.2f", spearman_rho)),
+    vjust = -0.35,
+    size = 3.2
+  ) +
+  ggplot2::scale_fill_manual(values = kit_colors) +
+  ggplot2::scale_y_continuous(limits = c(0, 1), expand = ggplot2::expansion(mult = c(0, 0.08))) +
+  ggh4x::facet_wrap2(ggplot2::vars(Method), nrow = 1) +
+  ggplot2::labs(x = NULL, y = "Spearman's rho") +
+  fig_theme(base_size = 12) +
+  ggplot2::theme(legend.position = "none")
+
+p_concordance
+
+ggplot2::ggsave(
+  file.path(figure_dir, "figure3B_qpcr_ngs_spearman_rho_by_kit.png"),
+  p_concordance,
+  width = 10,
+  height = 5,
+  dpi = 300
+)
+
+ggplot2::ggsave(
+  file.path(figure_dir, "figure3B_qpcr_ngs_spearman_rho_by_kit.pdf"),
+  p_concordance,
+  width = 10,
+  height = 5
+)
+```
+
+```{r figure3b2-concordance-overview, fig.width=9, fig.height=5}
+# kit, trimming, paired-end/single-end별 qPCR-NGS concordance overview
+p_concordance_overview <- ggplot2::ggplot(
+  concordance_overview,
+  ggplot2::aes(x = group, y = spearman_rho, fill = group)
+) +
+  ggplot2::geom_col(width = 0.65, color = "black", linewidth = 0.25) +
+  ggplot2::geom_text(
+    ggplot2::aes(label = sprintf("%.2f", spearman_rho)),
+    vjust = -0.35,
+    size = 3.2
+  ) +
+  ggplot2::scale_y_continuous(limits = c(0, 1), expand = ggplot2::expansion(mult = c(0, 0.08))) +
+  ggh4x::facet_wrap2(ggplot2::vars(comparison_level), nrow = 1, scales = "free_x") +
+  ggplot2::labs(x = NULL, y = "Spearman's rho") +
+  fig_theme(base_size = 12) +
+  ggplot2::theme(legend.position = "none")
+
+p_concordance_overview
+
+ggplot2::ggsave(
+  file.path(figure_dir, "figure3B2_qpcr_ngs_spearman_rho_overview.png"),
+  p_concordance_overview,
+  width = 9,
+  height = 5,
+  dpi = 300
+)
+
+ggplot2::ggsave(
+  file.path(figure_dir, "figure3B2_qpcr_ngs_spearman_rho_overview.pdf"),
+  p_concordance_overview,
+  width = 9,
+  height = 5
+)
+```
+
+```{r concordance-bias-statistics}
+# qPCR-NGS bias에 대한 kit, trimming, read strategy 효과 평가
+ngs_qpcr_stat_df <- ngs_qpcr_pair |>
+  dplyr::mutate(
+    abs_qPCR_NGS_difference = abs(qPCR_NGS_difference),
+    abs_ngs_relative_deviation_pct = abs(ngs_relative_deviation_pct),
+    abs_qPCR_relative_deviation_pct = abs(qPCR_relative_deviation_pct)
+  ) |>
+  dplyr::filter(!is.na(abs_qPCR_NGS_difference))
+
+model_abs_qpcr_ngs_bias <- stats::lm(
+  abs_qPCR_NGS_difference ~ DNA_kit + Trimm + Paired,
+  data = ngs_qpcr_stat_df
+)
+
+model_abs_ngs_expected_bias <- stats::lm(
+  abs_ngs_relative_deviation_pct ~ DNA_kit + Trimm + Paired,
+  data = ngs_qpcr_stat_df
+)
+
+abs_qpcr_ngs_bias_anova <- data.frame(stats::anova(model_abs_qpcr_ngs_bias)) |>
+  tibble::rownames_to_column("variable")
+
+abs_ngs_expected_bias_anova <- data.frame(stats::anova(model_abs_ngs_expected_bias)) |>
+  tibble::rownames_to_column("variable")
+
+readr::write_tsv(
+  abs_qpcr_ngs_bias_anova,
+  file.path(table_dir, "figure3_abs_qpcr_ngs_bias_lm_anova.tsv")
+)
+
+readr::write_tsv(
+  abs_ngs_expected_bias_anova,
+  file.path(table_dir, "figure3_abs_ngs_expected_bias_lm_anova.tsv")
+)
+# 
+# if (requireNamespace("lmerTest", quietly = TRUE)) {
+#   model_abs_qpcr_ngs_bias_lmer <- lmerTest::lmer(
+#     abs_qPCR_NGS_difference ~ DNA_kit + Trimm + Paired + (1 | taxon),
+#     data = ngs_qpcr_stat_df
+#   )
+# 
+#   model_abs_ngs_expected_bias_lmer <- lmerTest::lmer(
+#     abs_ngs_relative_deviation_pct ~ DNA_kit + Trimm + Paired + (1 | taxon),
+#     data = ngs_qpcr_stat_df
+#   )
+# 
+#   abs_qpcr_ngs_bias_lmer_anova <- data.frame(lmerTest::anova(model_abs_qpcr_ngs_bias_lmer)) |>
+#     tibble::rownames_to_column("variable")
+# 
+#   abs_ngs_expected_bias_lmer_anova <- data.frame(lmerTest::anova(model_abs_ngs_expected_bias_lmer)) |>
+#     tibble::rownames_to_column("variable")
+# 
+#   readr::write_tsv(
+#     abs_qpcr_ngs_bias_lmer_anova,
+#     file.path(table_dir, "figure3_abs_qpcr_ngs_bias_lmer_anova.tsv")
+#   )
+# 
+#   readr::write_tsv(
+#     abs_ngs_expected_bias_lmer_anova,
+#     file.path(table_dir, "figure3_abs_ngs_expected_bias_lmer_anova.tsv")
+#   )
+# 
+#   abs_qpcr_ngs_bias_lmer_anova
+#   abs_ngs_expected_bias_lmer_anova
+# }
+
+abs_qpcr_ngs_bias_anova
+abs_ngs_expected_bias_anova
+```
+
+# 10. Bias relative to expected mock composition
+
+```{r bias-tables}
+qpcr_bias_summary <- qpcr_long |>
+  dplyr::group_by(DNA_kit, taxon) |>
+  dplyr::summarise(
+    n = sum(!is.na(qPCR_relative_abundance)),
+    mean_abundance = mean(qPCR_relative_abundance, na.rm = TRUE),
+    sd_abundance = stats::sd(qPCR_relative_abundance, na.rm = TRUE),
+    se_abundance = sd_abundance / sqrt(n),
+    expected_abundance = 0.1,
+    bias = mean_abundance - expected_abundance,
+    relative_deviation_pct = bias / expected_abundance * 100,
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(measurement = "qPCR ITS2")
+
+ngs_bias_summary <- ngs_qpcr_pair |>
+  dplyr::group_by(Method, DNA_kit, taxon) |>
+  dplyr::summarise(
+    n = sum(!is.na(ngs_relative_abundance)),
+    mean_abundance = mean(ngs_relative_abundance, na.rm = TRUE),
+    sd_abundance = stats::sd(ngs_relative_abundance, na.rm = TRUE),
+    se_abundance = sd_abundance / sqrt(n),
+    expected_abundance = 0.1,
+    bias = mean_abundance - expected_abundance,
+    relative_deviation_pct = bias / expected_abundance * 100,
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(measurement = paste0("NGS ", Method)) |>
+  dplyr::select(-Method)
+
+bias_summary <- dplyr::bind_rows(qpcr_bias_summary, ngs_bias_summary) |>
+  dplyr::mutate(
+    taxon = factor(taxon, levels = expected_species),
+    DNA_kit = factor(DNA_kit, levels = c("DNeasy", "QIAamp", "Zymo")),
+    measurement = factor(measurement, levels = c("qPCR ITS2", paste0("NGS ", c("ITSx_PE", "ITSx_SE", "Cutadapt_PE", "Cutadapt_SE"))))
+  ) |>
+  dplyr::arrange(measurement, DNA_kit, taxon)
+
+readr::write_tsv(bias_summary, file.path(table_dir, "figure3_bias_relative_to_expected_summary.tsv"))
+
+bias_summary
+```
+
+```{r figure3c-bias-plot, fig.width=14, fig.height=10}
+p_bias <- ggplot2::ggplot(
+  bias_summary,
+  ggplot2::aes(x = taxon, y = relative_deviation_pct, fill = DNA_kit)
+) +
+  ggplot2::geom_hline(yintercept = 0, linetype = "dashed", color = "grey40", linewidth = 0.5) +
+  ggplot2::geom_col(position = ggplot2::position_dodge(width = 0.75), width = 0.65, color = "black", linewidth = 0.15) +
+  ggplot2::scale_fill_manual(values = kit_colors) +
+  ggplot2::scale_y_continuous(labels = function(x) paste0(x, "%")) +
+  ggh4x::facet_wrap2(ggplot2::vars(measurement), ncol = 1, scales = "free_y") +
+  ggplot2::labs(
+    x = NULL,
+    y = "Relative deviation from expected (%)",
+    fill = "Kit"
+  ) +
+  fig_theme(base_size = 11) +
+  ggplot2::theme(
+    legend.position = "top",
+    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, vjust = 1, color = "black", face = "italic")
+  )
+
+p_bias
+
+ggplot2::ggsave(
+  file.path(figure_dir, "figure3C_qpcr_ngs_relative_deviation_from_expected.png"),
+  p_bias,
+  width = 14,
+  height = 10,
+  dpi = 300
+)
+
+ggplot2::ggsave(
+  file.path(figure_dir, "figure3C_qpcr_ngs_relative_deviation_from_expected.pdf"),
+  p_bias,
+  width = 14,
+  height = 10
+)
+```
+
+# 11. Kit-level qPCR and NGS summary tables
+
+```{r kit-summary-tables}
+qpcr_kit_species_summary <- qpcr_long |>
+  dplyr::group_by(DNA_kit, taxon) |>
+  dplyr::summarise(
+    qPCR_mean = mean(qPCR_relative_abundance, na.rm = TRUE),
+    qPCR_sd = stats::sd(qPCR_relative_abundance, na.rm = TRUE),
+    qPCR_bias = qPCR_mean - 0.1,
+    qPCR_relative_deviation_pct = qPCR_bias / 0.1 * 100,
+    .groups = "drop"
+  )
+
+ngs_kit_species_summary <- ngs_qpcr_pair |>
+  dplyr::group_by(Method, DNA_kit, taxon) |>
+  dplyr::summarise(
+    NGS_mean = mean(ngs_relative_abundance, na.rm = TRUE),
+    NGS_sd = stats::sd(ngs_relative_abundance, na.rm = TRUE),
+    NGS_bias = NGS_mean - 0.1,
+    NGS_relative_deviation_pct = NGS_bias / 0.1 * 100,
+    .groups = "drop"
+  )
+
+qpcr_ngs_summary_table <- ngs_kit_species_summary |>
+  dplyr::left_join(qpcr_kit_species_summary, by = c("DNA_kit", "taxon")) |>
+  dplyr::mutate(
+    mean_difference_NGS_minus_qPCR = NGS_mean - qPCR_mean,
+    absolute_mean_difference = abs(mean_difference_NGS_minus_qPCR)
+  ) |>
+  dplyr::arrange(Method, DNA_kit, taxon)
+
+largest_negative_bias <- bias_summary |>
+  dplyr::filter(taxon == "Malassezia_globosa") |>
+  dplyr::select(measurement, DNA_kit, taxon, mean_abundance, expected_abundance, bias, relative_deviation_pct) |>
+  dplyr::arrange(relative_deviation_pct)
+
+concordance_sentence_table <- concordance_by_kit |>
+  dplyr::mutate(
+    text = paste0(
+      DNA_kit,
+      " showed Spearman's rho = ", sprintf("%.2f", spearman_rho),
+      ", Pearson's r = ", sprintf("%.2f", pearson_r),
+      ", and linear-model R² = ", sprintf("%.2f", lm_R2),
+      " between qPCR and NGS relative abundance."
+    )
+  ) |>
+  dplyr::select(DNA_kit, spearman_rho, pearson_r, lm_R2, RMSE_between_qPCR_NGS, MAE_between_qPCR_NGS, text)
+
+readr::write_tsv(qpcr_kit_species_summary, file.path(table_dir, "figure3_qpcr_kit_species_summary.tsv"))
+readr::write_tsv(ngs_kit_species_summary, file.path(table_dir, "figure3_ngs_kit_species_summary.tsv"))
+readr::write_tsv(qpcr_ngs_summary_table, file.path(table_dir, "figure3_qpcr_ngs_kit_species_summary.tsv"))
+readr::write_tsv(concordance_sentence_table, file.path(table_dir, "figure3_concordance_sentence_table.tsv"))
+readr::write_tsv(largest_negative_bias, file.path(table_dir, "figure3_malassezia_globosa_negative_bias.tsv"))
+
+if (requireNamespace("writexl", quietly = TRUE)) {
+  writexl::write_xlsx(
+    list(
+      qPCR_long = qpcr_long,
+      NGS_species = ngs_species_complete,
+      NGS_qPCR_pair = ngs_qpcr_pair,
+      Concordance_by_kit_method = concordance_by_kit_method,
+      Concordance_by_kit = concordance_by_kit,
+      Bias_summary = bias_summary,
+      Kit_species_summary = qpcr_ngs_summary_table,
+      Manuscript_sentence = concordance_sentence_table,
+      Malassezia_bias = largest_negative_bias
+    ),
+    path = file.path(table_dir, "figure3_ngs_qpcr_comparison_tables.xlsx")
+  )
+}
+
+qpcr_ngs_summary_table
+concordance_sentence_table
+largest_negative_bias
+```
+
+# 12. Suggested result wording
+
+```{r result-wording, results='asis'}
+best_kit <- concordance_by_kit |>
+  dplyr::slice_max(order_by = spearman_rho, n = 1, with_ties = FALSE) |>
+  dplyr::pull(DNA_kit)
+
+ordered_kit_text <- concordance_by_kit |>
+  dplyr::arrange(dplyr::desc(spearman_rho)) |>
+  dplyr::mutate(summary = paste0(DNA_kit, " (Spearman's rho = ", sprintf("%.2f", spearman_rho), ")")) |>
+  dplyr::pull(summary) |>
+  paste(collapse = ", followed by ")
+
+cat("In the direct comparison between qPCR-based ITS2 quantification and amplicon sequencing, ",
+    best_kit,
+    " showed the closest concordance between the two analytical readouts. The kit-level concordance was ordered as ",
+    ordered_kit_text,
+    ". This result indicates that agreement between qPCR and sequencing should be interpreted separately from extraction reproducibility or agreement with the expected mock composition.\n\n",
+    sep = "")
+
+cat("For bias relative to the expected equal-proportion mock community, the y-axis should be interpreted as relative deviation or bias, not detection rate. Negative values indicate underrepresentation relative to the expected 10% composition.\n")
+```

@@ -1,0 +1,37 @@
+DNA_kit	Paired	taxonomic_rank	taxon_method_set	n_taxa	total_taxa	pct_taxa
+DNeasy	PE	Genus	Shared	26	35	74.28571428571429
+DNeasy	PE	Genus	Cutadapt only	7	35	20
+DNeasy	PE	Genus	ITSxpress only	2	35	5.714285714285714
+DNeasy	SE	Genus	Shared	27	33	81.81818181818183
+DNeasy	SE	Genus	Cutadapt only	5	33	15.151515151515152
+DNeasy	SE	Genus	ITSxpress only	1	33	3.0303030303030303
+DNeasy	PE	Species	Shared	26	45	57.77777777777777
+DNeasy	PE	Species	Cutadapt only	12	45	26.666666666666668
+DNeasy	PE	Species	ITSxpress only	7	45	15.555555555555555
+DNeasy	SE	Species	Shared	30	40	75
+DNeasy	SE	Species	Cutadapt only	8	40	20
+DNeasy	SE	Species	ITSxpress only	2	40	5
+QIAamp	PE	Genus	Shared	36	42	85.71428571428571
+QIAamp	PE	Genus	Cutadapt only	5	42	11.904761904761903
+QIAamp	PE	Genus	ITSxpress only	1	42	2.380952380952381
+QIAamp	SE	Genus	Shared	36	42	85.71428571428571
+QIAamp	SE	Genus	Cutadapt only	5	42	11.904761904761903
+QIAamp	SE	Genus	ITSxpress only	1	42	2.380952380952381
+QIAamp	PE	Species	Shared	30	62	48.38709677419355
+QIAamp	PE	Species	Cutadapt only	19	62	30.64516129032258
+QIAamp	PE	Species	ITSxpress only	13	62	20.967741935483872
+QIAamp	SE	Species	Shared	39	52	75
+QIAamp	SE	Species	Cutadapt only	9	52	17.307692307692307
+QIAamp	SE	Species	ITSxpress only	4	52	7.6923076923076925
+Zymo	PE	Genus	Shared	10	16	62.5
+Zymo	PE	Genus	Cutadapt only	5	16	31.25
+Zymo	PE	Genus	ITSxpress only	1	16	6.25
+Zymo	SE	Genus	Shared	10	16	62.5
+Zymo	SE	Genus	Cutadapt only	5	16	31.25
+Zymo	SE	Genus	ITSxpress only	1	16	6.25
+Zymo	PE	Species	Shared	8	18	44.44444444444444
+Zymo	PE	Species	Cutadapt only	7	18	38.88888888888889
+Zymo	PE	Species	ITSxpress only	3	18	16.666666666666664
+Zymo	SE	Species	Shared	10	16	62.5
+Zymo	SE	Species	Cutadapt only	5	16	31.25
+Zymo	SE	Species	ITSxpress only	1	16	6.25

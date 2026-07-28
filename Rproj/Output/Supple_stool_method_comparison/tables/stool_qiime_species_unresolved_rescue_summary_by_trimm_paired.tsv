@@ -1,0 +1,5 @@
+Trimm	Paired	preprocess_method	n_species_unresolved_asv	species_unresolved_total_reads	n_blast_species_rescued_asv	blast_species_rescued_reads	pct_blast_species_rescued_asv	pct_blast_species_rescued_reads
+Cutadapt	PE	Cutadapt	225	269482	0	0	0	0
+Cutadapt	SE	Cutadapt	238	264510	0	0	0	0
+ITSxpress	PE	ITSxpress	34	68316	0	0	0	0
+ITSxpress	SE	ITSxpress	37	66780	0	0	0	0

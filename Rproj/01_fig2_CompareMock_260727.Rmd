@@ -1,0 +1,1135 @@
+---
+title: "Figure 4 pilot:  taxonomy benchmark"
+author: "Kim So-Yeon"
+date: "2026-07-27"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 10,
+  fig.height = 6,
+  dpi = 300
+)
+options(stringsAsFactors = FALSE)
+```
+
+# 1. Brief analysis plan
+
+This Rmd processes one completed ITSdetector run and compares two taxonomy versions using the same ASV abundance table.
+
+- UNITE before BLAST: `taxonomy_normalized.tsv`
+- UNITE+BLAST after refinement: `taxonomy_blast.tsv` with normalized rank columns
+- Species names are harmonized before comparison with the expected mock composition.
+- Main detection rule: `count > 0`
+- PBS negative controls are retained in composition plots but excluded from ground-truth accuracy summaries.
+
+# 2. Load packages and paths
+
+
+## 1) pacakges and paths
+```{r load-packages-paths}
+
+library(tidyverse)
+library(qiime2R)
+library(ggplot2)
+library(ggh4x)
+library(vegan)
+library(randomForest)
+library(tidyverse)
+library(patchwork)
+library(scales)
+
+```
+
+
+```{r}
+
+project_dir <- "/data/home2/ksy/260724_GutMyco_Fungal_Mock_Paper"
+rproj_dir <- file.path(project_dir, "Rproj")
+
+analysis_dir <- file.path(rproj_dir, "Output", "fig2")
+table_dir <- file.path(analysis_dir, "tables")
+figure_dir <- file.path(analysis_dir, "figures")
+
+dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
+```
+
+
+## 2) Raw data path
+```{r}
+run_tbl <- tibble::tribble(
+  ~run_id,                                      ~preprocess_method, ~read_strategy, ~preprocess_dir, ~read_dir,
+  "fig4_q30_PE_itsxpress_unite_blast_top1_rescue", "ITSxpress",     "PE",           "itsxpress",     "paired",
+  "fig4_q30_SE_itsxpress_unite_blast_top1_rescue", "ITSxpress",     "SE",           "itsxpress",     "single",
+  "fig4_q30_PE_cutadapt_unite_blast_top1_rescue",  "Cutadapt",      "PE",           "cutadapt",      "paired",
+  "fig4_q30_SE_cutadapt_unite_blast_top1_rescue",  "Cutadapt",      "SE",           "cutadapt",      "single"
+) |>
+  dplyr::mutate(
+    run_dir = file.path(project_dir, "Output", run_id),
+    pipeline = "ITSdetector",
+    Paired = read_strategy,
+    Trimm = preprocess_method,
+    table_qza = file.path(run_dir, "dada2", preprocess_dir, read_dir, "table.qza"),
+    repseq_qza = file.path(run_dir, "dada2", preprocess_dir, read_dir, "repseq.qza"),
+    denoising_stats_qza = file.path(run_dir, "dada2", preprocess_dir, read_dir, "denoising_stats.qza"),
+    taxonomy_custom = file.path(run_dir, "taxonomy_blast", preprocess_dir, read_dir, "CustomDB", "taxonomy.tsv"),
+    taxonomy_custom_evidence = file.path(run_dir, "taxonomy_blast", preprocess_dir, read_dir, "CustomDB", "taxonomy_customdb_evidence.tsv"),
+    cleanup_qc_summary = file.path(run_dir, "cleanup_qc", "cleanup_qc_summary.tsv")
+  )
+
+
+sample_metadata_path <- file.path(project_dir, "Input", "metadata_mock_stool_and_mock_260724.tsv")
+
+path_check <- run_tbl |>
+  dplyr::select(
+    run_id,
+    table_qza,
+    taxonomy_custom,
+    taxonomy_custom_evidence
+  ) |>
+  tidyr::pivot_longer(
+    cols = -run_id,
+    names_to = "file_key",
+    values_to = "path"
+  ) |>
+  dplyr::bind_rows(
+    tibble::tibble(
+      run_id = "metadata",
+      file_key = "sample_metadata",
+      path = sample_metadata_path
+    )
+  ) |>
+  dplyr::mutate(exists = file.exists(path))
+
+missing_required <- path_check |>
+  dplyr::filter(!exists)
+
+missing_required
+# if (nrow(missing_required) > 0) {
+#   stop("Missing required input files:\n", paste(missing_required$path, collapse = "\n"))
+# }
+```
+
+모든 파일 다 인식 완료 
+
+# 3. Define expected mock composition and plotting style
+
+## 1) Mock community (ATCC)
+```{r expected-style}
+expected_species <- c(
+  "Aspergillus_fumigatus",
+  "Cryptococcus_neoformans",
+  "Trichophyton_interdigitale",
+  "Penicillium_chrysogenum",
+  "Fusarium_keratoplasticum",
+  "Candida_albicans",
+  "Nakaseomyces_glabratus",
+  "Malassezia_globosa",
+  "Saccharomyces_cerevisiae",
+  "Cutaneotrichosporon_dermatis"
+)
+
+expected_genus <- c(
+  "Aspergillus", "Cryptococcus", "Trichophyton", "Penicillium", "Fusarium",
+  "Candida", "Nakaseomyces", "Malassezia", "Saccharomyces", "Cutaneotrichosporon"
+)
+
+expected_truth <- dplyr::bind_rows(
+  tibble::tibble(taxonomic_rank = "Species", taxon = expected_species, expected_abundance = 0.1),
+  tibble::tibble(taxonomic_rank = "Genus", taxon = expected_genus, expected_abundance = 0.1)
+)
+
+
+readr::write_tsv(expected_truth, file.path(table_dir, "expected_mock_composition.tsv"))
+
+```
+
+## 2) taxa color
+```{r}
+tax_col <- c(
+  "#E41A1CFF", "#377EB8FF", "#4DAF4AFF", "#984EA3FF", "#FF7F00FF",
+  "#FFFF33FF", "#A65628FF", "#f55cacFF", "#E6AB02FF", "#1B9E77FF", "#999999FF"
+)
+
+met_col <- c(
+  "#66C2A5", "#FC8D62", "#8DA0CB", "#E78AC3",
+  "#A6D854", "#FFD92F", "#E5C494", "#B3B3B3"
+)
+```
+
+## 3) figure theme  
+```{r}
+fig_theme <- function(base_size = 12) {
+  ggplot2::theme_classic(base_size = base_size) +
+    ggplot2::theme(
+      panel.background = ggplot2::element_blank(),
+      plot.background = ggplot2::element_blank(),
+      panel.grid = ggplot2::element_blank(),
+      axis.line = ggplot2::element_line(color = "black", linewidth = 0.5),
+      axis.ticks = ggplot2::element_line(color = "black", linewidth = 0.5),
+      axis.text.x.bottom = ggplot2::element_text(angle = 45, hjust = 1.1, vjust = 0.9),
+      legend.title = ggplot2::element_blank(),
+      strip.background = ggplot2::element_blank(),
+      strip.text = ggplot2::element_text(face = "bold")
+    )
+}
+```
+
+# 4. Helper functions
+
+```{r helper-functions}
+clean_taxon_value <- function(x) {
+  x |>
+    as.character() |>
+    stringr::str_replace_all("^.__", "") |>
+    stringr::str_replace_all(" ", "_") |>
+    stringr::str_replace_all(";.*$", "") |>
+    stringr::str_replace_all("^_+|_+$", "") |>
+    dplyr::na_if("")
+}
+
+harmonize_taxon <- function(x, rank = "Species") {
+  x1 <- clean_taxon_value(x)
+
+  dplyr::case_when(
+    rank == "Species" & x1 %in% c("Candida_glabrata", "Nakaseomyces_glabrata") ~ "Nakaseomyces_glabratus",
+    # rank == "Species" & x1 %in% c("Cryptococcus_neoformans_var_grubii", "Cryptococcus_neoformans_var._grubii") ~ "Cryptococcus_neoformans",
+    rank == "Species" & x1 == "Penicillium notatum" ~ "Penicillium_chrysogenum",
+    # rank == "Species" & x1 == "Trichophyton_mentagrophytes" ~ "Trichophyton_interdigitale",
+    TRUE ~ x1
+  )
+}
+
+parse_qiime_taxon <- function(taxon_string, rank_index) {
+  split_mat <- stringr::str_split_fixed(taxon_string, ";", 7)
+  clean_taxon_value(split_mat[, rank_index])
+}
+
+read_taxonomy_table <- function(path, taxonomy_method_label) {
+  tax <- readr::read_tsv(path, show_col_types = FALSE)
+
+  if ("Feature ID" %in% colnames(tax)) {
+    tax <- dplyr::rename(tax, feature_id = `Feature ID`)
+  }
+
+  if ("ASV" %in% colnames(tax)) {
+    tax <- dplyr::rename(tax, feature_id = ASV)
+  }
+
+  if (!"feature_id" %in% colnames(tax)) {
+    stop("Taxonomy table has no Feature ID or ASV column: ", path)
+  }
+
+  if (!"Genus" %in% colnames(tax) && "Taxon" %in% colnames(tax)) {
+    tax <- dplyr::mutate(tax, Genus = parse_qiime_taxon(.data$Taxon, 6))
+  }
+
+  if (!"Species" %in% colnames(tax) && "Taxon" %in% colnames(tax)) {
+    tax <- dplyr::mutate(tax, Species = parse_qiime_taxon(.data$Taxon, 7))
+  }
+
+  if (!all(c("Genus", "Species") %in% colnames(tax))) {
+    stop("Taxonomy table must contain Genus and Species columns or a parsable Taxon column: ", path)
+  }
+
+  if (!"Taxon" %in% colnames(tax)) {
+    tax <- dplyr::mutate(tax, Taxon = NA_character_)
+  }
+
+  tax |>
+    dplyr::transmute(
+      feature_id = as.character(.data$feature_id),
+      taxonomy_method = taxonomy_method_label,
+      Genus = harmonize_taxon(.data$Genus, rank = "Genus"),
+      Species = harmonize_taxon(.data$Species, rank = "Species"),
+      taxon_string = as.character(.data$Taxon)
+    ) |>
+    dplyr::mutate(
+      Genus = dplyr::if_else(is.na(.data$Genus) | stringr::str_detect(.data$Genus, "_g$"), "Unclassified", .data$Genus),
+      Species = dplyr::if_else(is.na(.data$Species) | stringr::str_detect(.data$Species, "_g$|_s$"), "Unclassified", .data$Species)
+    )
+}
+
+standardize_metadata <- function(metadata_df) {
+  meta <- metadata_df
+
+  if ("sample" %in% colnames(meta) && !"sample_id" %in% colnames(meta)) {
+    meta <- dplyr::rename(meta, sample_id = sample)
+  }
+
+  if ("kit_code" %in% colnames(meta) && !"kit" %in% colnames(meta)) {
+    meta <- dplyr::rename(meta, kit = kit_code)
+  }
+
+  meta |>
+    dplyr::mutate(
+      sample_id = as.character(.data$sample_id),
+      sample_id = stringr::str_replace(.data$sample_id, "^X", ""),
+      DNA_kit = dplyr::recode(
+        as.character(.data$kit),
+        "D" = "DNeasy",
+        "Q" = "QIAamp",
+        "Z" = "Zymo",
+        .default = as.character(.data$kit)
+      ),
+      replicate = as.character(.data$replicate),
+      matrix_type = as.character(.data$matrix_type)
+    ) |>
+    dplyr::select(.data$sample_id, .data$DNA_kit, .data$replicate, .data$matrix_type, dplyr::everything()) |>
+    dplyr::distinct(.data$sample_id, .keep_all = TRUE)
+}
+
+feature_table_to_long <- function(feature_table_obj, taxonomy_feature_ids) {
+  ft <- as.data.frame(feature_table_obj)
+  row_match <- sum(rownames(ft) %in% taxonomy_feature_ids)
+  col_match <- sum(colnames(ft) %in% taxonomy_feature_ids)
+
+  if (col_match > row_match) {
+    ft <- t(ft) |> as.data.frame()
+  }
+
+  ft |>
+    tibble::rownames_to_column("feature_id") |>
+    tidyr::pivot_longer(
+      cols = - .data$feature_id,
+      names_to = "sample_id",
+      values_to = "count"
+    ) |>
+    dplyr::mutate(
+      sample_id = stringr::str_replace(as.character(.data$sample_id), "^X", ""),
+      count = as.numeric(.data$count)
+    )
+}
+
+calc_bray <- function(observed, expected) {
+  if (sum(observed, na.rm = TRUE) + sum(expected, na.rm = TRUE) == 0) {
+    return(NA_real_)
+  }
+  as.numeric(vegan::vegdist(rbind(observed, expected), method = "bray")[1])
+}
+
+calc_r2 <- function(observed, expected) {
+  if (stats::sd(observed, na.rm = TRUE) == 0 || stats::sd(expected, na.rm = TRUE) == 0) {
+    return(NA_real_)
+  }
+  stats::cor(observed, expected, use = "complete.obs")^2
+}
+
+calc_metrics <- function(df, threshold_value, threshold_label) {
+  df |>
+    dplyr::mutate(
+      detected = .data$relative_abundance > threshold_value,
+      expected_detected = .data$expected_abundance > 0
+    ) |>
+    dplyr::filter(.data$matrix_type %in% c("mock_only", "mock_plus_stool")) |>
+    dplyr::group_by(
+      .data$run_id, .data$sample_id, .data$DNA_kit, .data$replicate, .data$matrix_type,
+      .data$pipeline, .data$preprocess_method, .data$read_strategy,
+      .data$taxonomy_method, .data$BLAST, .data$Paired, .data$Trimm, .data$taxonomic_rank
+    ) |>
+    dplyr::summarise(
+      TP = sum(.data$detected & .data$expected_detected, na.rm = TRUE),
+      FP = sum(.data$detected & !.data$expected_detected, na.rm = TRUE),
+      FN = sum(!.data$detected & .data$expected_detected, na.rm = TRUE),
+      precision = dplyr::if_else(.data$TP + .data$FP > 0, .data$TP / (.data$TP + .data$FP), NA_real_),
+      recall = dplyr::if_else(.data$TP + .data$FN > 0, .data$TP / (.data$TP + .data$FN), NA_real_),
+      F1 = dplyr::if_else(!is.na(.data$precision) & !is.na(.data$recall) & (.data$precision + .data$recall) > 0,
+                          2 * .data$precision * .data$recall / (.data$precision + .data$recall), NA_real_),
+      false_discovery_rate = dplyr::if_else(.data$TP + .data$FP > 0, .data$FP / (.data$TP + .data$FP), NA_real_),
+      Bray_Curtis = calc_bray(.data$relative_abundance, .data$expected_abundance),
+      R2 = calc_r2(.data$relative_abundance, .data$expected_abundance),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(detection_threshold = threshold_label)
+}
+
+make_rf_importance <- function(meta_df, outcome_col) {
+  predictors <- c("DNA_kit", "Paired", "Trimm", "matrix_type")
+  active_predictors <- predictors[purrr::map_lgl(predictors, ~ dplyr::n_distinct(meta_df[[.x]], na.rm = TRUE) > 1)]
+
+  rf_df <- meta_df |>
+    dplyr::filter(!is.na(.data[[outcome_col]])) |>
+    dplyr::select(dplyr::all_of(c(outcome_col, active_predictors))) |>
+    tidyr::drop_na() |>
+    dplyr::mutate(dplyr::across(dplyr::all_of(active_predictors), as.factor))
+
+  if (length(active_predictors) == 0 || nrow(rf_df) < 10) {
+    return(list(model = NULL, importance = tibble::tibble()))
+  }
+
+  set.seed(123)
+  rf_model <- randomForest::randomForest(
+    formula = stats::as.formula(paste(outcome_col, "~", paste(active_predictors, collapse = " + "))),
+    data = rf_df,
+    importance = TRUE
+  )
+
+  rf_imp <- randomForest::importance(rf_model, type = 1) |>
+    as.data.frame() |>
+    tibble::rownames_to_column("Variable") |>
+    dplyr::rename(IncMSE = `%IncMSE`) |>
+    dplyr::mutate(outcome = outcome_col)
+
+  list(model = rf_model, importance = rf_imp)
+}
+
+plot_box_jitter <- function(data, x_var, y_var, fill_var, fill_colors, y_lab = NULL) {
+  ggplot2::ggplot(
+    data,
+    ggplot2::aes(x = .data[[x_var]], y = .data[[y_var]], fill = .data[[fill_var]])
+  ) +
+    ggplot2::geom_boxplot(width = 0.6, color = "black", linewidth = 0.4, outlier.shape = NA, alpha = 0.6) +
+    ggplot2::geom_jitter(width = 0.15, size = 2, shape = 21, stroke = 0.4, color = "black", fill = "white") +
+    ggplot2::scale_fill_manual(values = fill_colors) +
+    ggplot2::labs(x = NULL, y = y_lab %||% y_var) +
+    fig_theme(base_size = 12)
+}
+
+
+
+plot_bar <-
+  function(data,
+           x_var,
+           y_var,
+           fill_var,
+           fill_colors,
+           y_lab = NULL) {
+    plot_df <- data |>
+      dplyr::group_by(metric,
+                      Trimm,
+                      Paired,
+                      matrix_type,
+                      DNA_kit,
+                      dplyr::across(dplyr::all_of(c(x_var, fill_var)))) |>
+      dplyr::summarise(
+        mean = mean(.data[[y_var]], na.rm = TRUE),
+        sd = sd(.data[[y_var]], na.rm = TRUE),
+        n = dplyr::n(),
+        se = sd / sqrt(n),
+        .groups = "drop"
+      )
+    
+    ggplot2::ggplot(plot_df,
+                    ggplot2::aes(x = .data[[x_var]],
+                                 y = mean,
+                                 fill = .data[[fill_var]])) +
+      ggplot2::geom_col(width = 0.7,
+                        color = "black",
+                        linewidth = 0.4) +
+      ggplot2::geom_errorbar(
+        ggplot2::aes(ymin = mean - se,
+                     ymax = mean + se),
+        width = 0.2,
+        linewidth = 0.5
+      ) +
+      ggplot2::scale_fill_manual(values = fill_colors) +
+      ggplot2::labs(x = NULL,
+                    y = y_lab %||% y_var) +
+      fig_theme(base_size = 12)
+  }
+
+`%||%` <- function(x, y) if (is.null(x)) y else x
+```
+
+# 5. Load and prepare data
+
+```{r prepare-data}
+sample_metadata <-
+  readr::read_tsv(sample_metadata_path, show_col_types = FALSE) |>
+  standardize_metadata()
+
+read_one_run <- function(run_row) {
+  feature_table_i <- qiime2R::read_qza(run_row$table_qza)$data
+  
+  taxonomy_custom_i <-
+    read_taxonomy_table(run_row$taxonomy_custom, "CustomDB BLAST") |>
+    dplyr::mutate(run_id = run_row$run_id)
+  
+  taxonomy_all_i <- taxonomy_custom_i |>
+    dplyr::mutate(
+      preprocess_method = run_row$preprocess_method,
+      read_strategy = run_row$read_strategy,
+      Paired = run_row$Paired,
+      Trimm = run_row$Trimm
+    )
+  
+  
+feature_long_i <-
+    feature_table_to_long(feature_table_i, unique(taxonomy_all_i$feature_id)) |>
+    dplyr::left_join(sample_metadata, by = "sample_id") |>
+    dplyr::mutate(
+      run_id = run_row$run_id,
+      pipeline = run_row$pipeline,
+      preprocess_method = run_row$preprocess_method,
+      read_strategy = run_row$read_strategy,
+      Paired = run_row$Paired,
+      Trimm = run_row$Trimm
+    )
+  
+  sample_depth_i <- feature_long_i |>
+    dplyr::group_by(run_id, sample_id, preprocess_method, read_strategy) |>
+    dplyr::summarise(total_reads = sum(count, na.rm = TRUE),
+                     .groups = "drop")
+  
+  list(
+    taxonomy_all = taxonomy_all_i,
+    feature_long = feature_long_i,
+    sample_depth = sample_depth_i
+  )
+}
+
+loaded_runs <- run_tbl |>
+  split(seq_len(nrow(run_tbl))) |>
+  purrr::map(read_one_run)
+
+taxonomy_all <- loaded_runs |>
+  purrr::map("taxonomy_all") |>
+  dplyr::bind_rows()
+
+feature_long <- loaded_runs |>
+  purrr::map("feature_long") |>
+  dplyr::bind_rows()
+
+sample_depth <- loaded_runs |>
+  purrr::map("sample_depth") |>
+  dplyr::bind_rows()
+
+
+# readr::write_tsv(taxonomy_all,
+#                  file.path(table_dir, "taxonomy_all_runs_used.tsv"))
+# readr::write_tsv(feature_long,
+#                  file.path(table_dir, "feature_table_asv_long_all_runs.tsv"))
+# readr::write_tsv(sample_depth,
+#                  file.path(table_dir, "sample_depth_all_runs.tsv"))
+```
+
+
+```{r}
+# Sun Jul 26 00:14:05 2026 ------------------------------
+
+taxonomy_all <-   readr::read_tsv("./Output/fig4_pilot_all4_corrected4/tables/taxonomy_all_runs_used.tsv")
+feature_long <-   readr::read_tsv("./Output/fig4_pilot_all4_corrected4/tables/feature_table_asv_long_all_runs.tsv")
+sample_depth <-   readr::read_tsv("./Output/fig4_pilot_all4_corrected4/tables/sample_depth_all_runs.tsv")
+
+
+```
+
+
+# 6. Create benchmark long table
+
+```{r benchmark-long}
+taxa_abundance <- feature_long |>
+  dplyr::select(
+    run_id,
+    feature_id,
+    sample_id,
+    count,
+    DNA_kit,
+    replicate,
+    matrix_type,
+    pipeline,
+    preprocess_method,
+    read_strategy,
+    Paired,
+    Trimm
+  ) |>
+  dplyr::filter(matrix_type %in% c("mock_only")) |>
+  dplyr::left_join(
+    taxonomy_all,
+    by = c(
+      "run_id",
+      "feature_id",
+      "preprocess_method",
+      "read_strategy",
+      "Paired",
+      "Trimm"
+    )
+  ) |>
+  dplyr::mutate(
+  BLAST = "CustomDB_BLAST",
+  Genus = dplyr::if_else(is.na(Genus) | Genus == "", "Unclassified", Genus),
+  Species = dplyr::if_else(is.na(Species) | Species == "", "Unclassified", Species)
+) |>
+  tidyr::pivot_longer(
+    cols = c(Genus, Species),
+    names_to = "taxonomic_rank",
+    values_to = "taxon"
+  ) |>
+  dplyr::mutate(taxon = dplyr::if_else(is.na(taxon) |
+                                         taxon == "", "Unclassified", taxon)) |>
+  dplyr::group_by(
+    run_id,
+    sample_id,
+    DNA_kit,
+    replicate,
+    matrix_type,
+    pipeline,
+    preprocess_method,
+    read_strategy,
+    taxonomy_method,
+    BLAST,
+    Paired,
+    Trimm,
+    taxonomic_rank,
+    taxon
+  ) |>
+  dplyr::summarise(count = sum(count, na.rm = TRUE), .groups = "drop") |>
+  dplyr::left_join(sample_depth,
+                   by = c("run_id", "sample_id", "preprocess_method", "read_strategy")) |>
+  dplyr::mutate(
+    total_reads = tidyr::replace_na(total_reads, 0),
+    relative_abundance = dplyr::if_else(total_reads > 0, count / total_reads, 0)
+  )
+
+sample_method_grid <- taxa_abundance |>
+  dplyr::distinct(
+    run_id,
+    sample_id,
+    DNA_kit,
+    replicate,
+    matrix_type,
+    pipeline,
+    preprocess_method,
+    read_strategy,
+    taxonomy_method,
+    BLAST,
+    Paired,
+    Trimm
+  )
+
+taxon_universe <- dplyr::bind_rows(
+  taxa_abundance |> dplyr::distinct(taxonomic_rank, taxon),
+  expected_truth |> dplyr::distinct(taxonomic_rank, taxon)
+) |>
+  dplyr::distinct(taxonomic_rank, taxon)
+
+benchmark_long <- sample_method_grid |>
+  tidyr::crossing(taxon_universe) |>
+  dplyr::left_join(expected_truth, by = c("taxonomic_rank", "taxon")) |>
+  dplyr::mutate(
+    expected_abundance = dplyr::case_when(
+      matrix_type %in% c("mock_only", "mock_plus_stool") &
+        !is.na(expected_abundance) ~ expected_abundance,
+      TRUE ~ 0
+    )
+  ) |>
+  dplyr::left_join(
+    taxa_abundance,
+    by = c(
+      "run_id",
+      "sample_id",
+      "DNA_kit",
+      "replicate",
+      "matrix_type",
+      "pipeline",
+      "preprocess_method",
+      "read_strategy",
+      "taxonomy_method",
+      "BLAST",
+      "Paired",
+      "Trimm",
+      "taxonomic_rank",
+      "taxon"
+    )
+  ) |>
+  dplyr::mutate(
+    count = tidyr::replace_na(count, 0),
+    total_reads = tidyr::replace_na(total_reads, 0),
+    relative_abundance = tidyr::replace_na(relative_abundance, 0)
+  ) |>
+  dplyr::select(
+    run_id,
+    sample_id,
+    DNA_kit,
+    replicate,
+    matrix_type,
+    pipeline,
+    preprocess_method,
+    read_strategy,
+    taxonomy_method,
+    BLAST,
+    Paired,
+    Trimm,
+    taxonomic_rank,
+    taxon,
+    count,
+    total_reads,
+    relative_abundance,
+    expected_abundance
+  )
+
+benchmark_long_species <- benchmark_long |>
+  dplyr::filter(taxonomic_rank == "Species")
+
+benchmark_long_genus <- benchmark_long |>
+  dplyr::filter(taxonomic_rank == "Genus")
+
+# readr::write_tsv(benchmark_long,
+#                  file.path(table_dir, "benchmark_long_genus_species.tsv"))
+# readr::write_tsv(benchmark_long_species,
+#                  file.path(table_dir, "benchmark_long_species.tsv"))
+# readr::write_tsv(benchmark_long_genus,
+#                  file.path(table_dir, "benchmark_long_genus.tsv"))
+```
+
+# 7. Figure2A: Species-level taxa plot
+## Original Plot 
+
+```{R}
+
+
+# Mock target genus 목록 생성
+mock_genera <- unique(stringr::str_replace(expected_species, "_.*$", ""))
+
+# Species-level table에서 genus 추출
+benchmark_long_species <- benchmark_long_species |>
+  dplyr::mutate(
+    Genus = stringr::str_extract(taxon, "^[A-Za-z]+")
+  )
+
+# 실제 데이터에서 관찰된 mock genus 소속 taxa만 추출
+observed_mock_taxa <- benchmark_long_species |>
+  dplyr::filter(
+    Genus %in% mock_genera,
+    taxon != "Unclassified",
+    relative_abundance > 0
+  ) |>
+  dplyr::group_by(Genus, taxon) |>
+  dplyr::summarise(
+    total_abundance = sum(relative_abundance, na.rm = TRUE),
+    max_abundance = max(relative_abundance, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  dplyr::filter(max_abundance >= 0.0001) |>
+  dplyr::arrange(match(Genus, mock_genera), dplyr::desc(total_abundance), taxon)
+
+# Genus-level로만 잡힌 경우 표시할 Genus_g label 자동 생성
+observed_genus_labels <- observed_mock_taxa |>
+  dplyr::distinct(Genus) |>
+  dplyr::mutate(taxon = paste0(Genus, "_g")) |>
+  dplyr::select(Genus, taxon)
+
+# 실제로 plot에 표시할 taxa level 자동 생성
+sp_level <- dplyr::bind_rows(
+  observed_mock_taxa |> dplyr::select(Genus, taxon),
+  observed_genus_labels
+) |>
+  dplyr::distinct(Genus, taxon) |>
+  dplyr::arrange(match(Genus, mock_genera), taxon) |>
+  dplyr::pull(taxon)
+
+# Genus별 기본 색상 지정
+genus_base_color <- c(
+  Aspergillus = "#E41A1CFF",
+  Candida = "#377EB8FF",
+  Cryptococcus = "#4DAF4AFF",
+  Cutaneotrichosporon = "#984EA3FF",
+  Fusarium = "#FF7F00FF",
+  Malassezia = "#FFFF33FF",
+  Nakaseomyces = "#A65628FF",
+  Penicillium = "#f55cacFF",
+  Saccharomyces = "#E6AB02FF",
+  Trichophyton = "#1B9E77FF"
+)
+
+# 관찰된 taxa 수에 따라 genus 색상 계열 내에서 자동 tint 생성
+taxon_color_df <- tibble::tibble(taxon = sp_level) |>
+  dplyr::mutate(
+    Genus = stringr::str_extract(taxon, "^[A-Za-z]+"),
+    base_color = genus_base_color[Genus]
+  ) |>
+  dplyr::group_by(Genus) |>
+  dplyr::arrange(taxon, .by_group = TRUE) |>
+  dplyr::mutate(
+    rank = dplyr::row_number(),
+    n_in_genus = dplyr::n(),
+    tint_amount = dplyr::if_else(n_in_genus > 1, (rank - 1) / (n_in_genus - 1) * 0.65, 0)  ) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(
+    color = purrr::map2_chr(
+      base_color,
+      tint_amount,
+      ~ ifelse(.y == 0, .x, colorspace::lighten(.x, amount = .y))
+    )
+  )
+
+taxa_colors <- stats::setNames(taxon_color_df$color, taxon_color_df$taxon)
+taxa_colors <- c(taxa_colors, Other = "#999999FF")
+```
+
+
+
+```{r}
+# 실제 데이터 기반으로 표시 taxa 결정
+plot_df <- benchmark_long_species |>
+  dplyr::mutate(
+    Species2 = dplyr::case_when(
+      taxon %in% sp_level ~ taxon,
+      Genus %in% mock_genera ~ paste0(Genus, "_g"),
+      TRUE ~ "Other"
+    ),
+    Xaxis = paste(run_id, sample_id, sep = "_")
+  ) |>
+  dplyr::group_by(
+    run_id, sample_id, Xaxis, DNA_kit, replicate, matrix_type,
+    taxonomy_method, BLAST, Trimm, Paired, Species2
+  ) |>
+  dplyr::summarise(
+    relative_abundance = sum(relative_abundance, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+readr::write_tsv(observed_mock_taxa, file.path(table_dir, "figure1_observed_mock_taxa.tsv"))
+readr::write_tsv(taxon_color_df, file.path(table_dir, "figure1_taxa_color_table.tsv"))
+readr::write_tsv(plot_df, file.path(table_dir, "figure1_species_taxa_plot_data.tsv"))
+```
+
+
+
+```{r}
+
+
+p_taxa <- ggplot2::ggplot(
+  plot_df,
+  ggplot2::aes(x = sample_id, y = relative_abundance, fill = Species2)
+) +
+  ggplot2::geom_col(width = 0.95) +
+  ggplot2::scale_fill_manual(values = tax_col, drop = FALSE) +
+  ggplot2::scale_y_continuous(expand = c(0, 0)) +
+  ggh4x::facet_nested(
+    ~  DNA_kit + Trimm + Paired,
+    scales = "free_x",
+    space = "free_x"
+  ) +
+  ggplot2::labs(x = NULL, y = "Relative abundance", fill = "Taxon") +
+  ggplot2::guides(
+    fill = ggplot2::guide_legend(
+      nrow = 3,
+      byrow = TRUE
+    )
+  ) +
+  ggplot2::theme_classic(base_size = 12) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5, color = "black", size = 7),
+    axis.text.y = ggplot2::element_text(color = "black"),
+    axis.title.y = ggplot2::element_text(color = "black", face = "bold"),
+    axis.line = ggplot2::element_line(color = "black", linewidth = 0.5),
+    axis.ticks = ggplot2::element_line(color = "black", linewidth = 0.5),
+    strip.background = ggplot2::element_blank(),
+    strip.text.x = ggplot2::element_text(face = "bold", color = "black"),
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    legend.key.size = grid::unit(0.35, "cm"),
+    legend.text = ggplot2::element_text(size = 7),
+    legend.title = ggplot2::element_text(size = 9, face = "bold")
+  )
+
+
+
+p_taxa
+```
+
+
+
+
+
+
+
+# 8. Figure2B: Ground-truth accuracy metrics
+
+```{r}
+# Mon Jul 27 11:28:13 2026 ------------------------------
+
+
+# 샘플링
+matrix_keep <- "mock_only"
+
+metric_levels_keep <- c(
+  "F1-score",
+  "R²",
+  "Bray–Curtis distance"
+)
+
+
+```
+
+```{r metric-calc-plot, fig.width=16, fig.height=10}
+# Ground-truth 기반 정확도 지표를 계산하고 저장
+metrics_main <- calc_metrics(benchmark_long, threshold_value = 0, threshold_label = "count_gt_0")
+metrics_sensitivity <- calc_metrics(benchmark_long, threshold_value = 0, threshold_label = "relative_abundance_ge_0")
+
+readr::write_tsv(metrics_main, file.path(table_dir, "benchmark_metrics_main_count_gt_0.tsv"))
+readr::write_tsv(metrics_sensitivity, file.path(table_dir, "benchmark_metrics_sensitivity_ra_ge_0.tsv"))
+
+# Species level 지표만 선택하고 분석 조건 순서를 지정
+meta2 <- metrics_main |>
+  dplyr::filter(taxonomic_rank == "Species") |>
+  dplyr::filter(taxonomy_method == "CustomDB BLAST") |>
+  dplyr::mutate(
+    DNA_kit = factor(DNA_kit, levels = c("DNeasy", "QIAamp", "Zymo")),
+    taxonomy_method = factor(taxonomy_method, levels = c("CustomDB BLAST")),
+    Trimm = factor(Trimm, levels = c("ITSxpress", "Cutadapt")),
+    Paired = factor(Paired, levels = c("PE", "SE")),
+    Method = paste(Trimm, Paired, sep = "_"),
+    Method = dplyr::recode(
+      Method,
+      "ITSxpress_PE" = "ITSx_PE",
+      "ITSxpress_SE" = "ITSx_SE",
+      "Cutadapt_PE" = "Cutadapt_PE",
+      "Cutadapt_SE" = "Cutadapt_SE"
+    ),
+    Method = factor(Method, levels = c("ITSx_PE", "ITSx_SE", "Cutadapt_PE", "Cutadapt_SE"))
+  )
+
+# Plot용 long-format table 생성
+metric_plot_df <- meta2 |>
+  dplyr::select(
+    run_id, sample_id, DNA_kit, replicate, matrix_type,
+    Trimm, Paired, Method, taxonomy_method, BLAST,
+    F1, R2, Bray_Curtis, precision, recall, false_discovery_rate
+  ) |>
+  tidyr::pivot_longer(
+    cols = c(F1, R2, Bray_Curtis, precision, recall, false_discovery_rate),
+    names_to = "metric",
+    values_to = "value"
+  ) |>
+  dplyr::mutate(
+    metric = dplyr::recode(
+      metric,
+      "F1" = "F1-score",
+      "R2" = "R²",
+      "Bray_Curtis" = "Bray–Curtis",
+      "precision" = "Precision",
+      "recall" = "Recall",
+      "false_discovery_rate" = "FDR"
+    ),
+    metric = factor(
+      metric,
+      levels = c("F1-score", "R²", "Bray–Curtis", "Precision", "Recall", "FDR")
+    )
+  )
+
+# readr::write_tsv(meta2, file.path(table_dir, "figure2_species_metric_table.tsv"))
+# readr::write_tsv(metric_plot_df, file.path(table_dir, "figure2_species_metric_plot_data.tsv"))
+```
+
+
+```{r, fig.width=16}
+# 조건별 평균과 표준오차를 계산
+metric_summary_df <- metric_plot_df |>
+  dplyr::group_by(metric, Method, DNA_kit) |>
+  dplyr::summarise(
+    mean_value = mean(value, na.rm = TRUE),
+    sd_value = stats::sd(value, na.rm = TRUE),
+    n = sum(!is.na(value)),
+    se_value = sd_value / sqrt(n),
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(
+    metric = factor(
+      metric,
+      levels = c("F1-score", "R²", "Bray–Curtis", "Precision", "Recall", "FDR")
+    ),
+    DNA_kit = factor(DNA_kit, levels = c("DNeasy", "QIAamp", "Zymo")),
+    Method = factor(Method, levels = c("ITSx_PE", "ITSx_SE", "Cutadapt_PE", "Cutadapt_SE"))
+  ) %>% 
+  filter(metric %in% c("F1-score",  "Bray–Curtis", "Precision", "Recall"))
+
+# readr::write_tsv(metric_summary_df, file.path(table_dir, "figure2_species_metric_summary_barplot_0.tsv"))
+```
+
+
+```{r, fig.width=12}
+kit_colors <- c(
+  "DNeasy" = "#66C2A5",
+  "QIAamp" = "#FC8D62",
+  "Zymo" = "#8DA0CB"
+)
+
+p_metrics <- ggplot2::ggplot(
+  metric_summary_df,
+  ggplot2::aes(x = DNA_kit, y = mean_value, fill = DNA_kit)
+) +
+  ggplot2::geom_col(width = 0.65, color = "black", linewidth = 0.25) +
+  ggplot2::geom_errorbar(
+    ggplot2::aes(ymin = mean_value - se_value, ymax = mean_value + se_value),
+    width = 0.18,
+    linewidth = 0.4,
+    color = "black"
+  ) +
+  ggplot2::scale_fill_manual(values = kit_colors) +
+  ggh4x::facet_wrap2(
+    ggplot2::vars(metric, Method),
+    nrow = 2,
+    scales = "free_y",
+    strip = ggh4x::strip_nested()
+  ) +
+  ggplot2::labs(x = NULL, y = NULL) +
+  ggplot2::theme_classic(base_size = 12) +
+  ggplot2::theme(
+    legend.position = "none",
+    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, vjust = 1, color = "black"),
+    axis.text.y = ggplot2::element_text(color = "black"),
+    axis.line = ggplot2::element_line(color = "black", linewidth = 0.5),
+    axis.ticks = ggplot2::element_line(color = "black", linewidth = 0.5),
+    strip.background = ggplot2::element_blank(),
+    strip.text.x = ggplot2::element_text(face = "plain", color = "black", size = 11),
+    panel.spacing.x = grid::unit(1.1, "lines")
+  )
+p_metrics
+
+ggplot2::ggsave(file.path(figure_dir, "figure2_customdb_kit_accuracy_metrics_barplot.png"), p_metrics, width = 12, height = 8, 
+                dpi = 300)
+ggplot2::ggsave(file.path(figure_dir, "figure2_customdb_kit_accuracy_metrics_barplot.pdf"), p_metrics, width = 12, height = 8)
+```
+
+# 9. Figure4C: Random forest importance and PERMANOVA R²
+
+## 1) function
+```{r}
+
+meta2[is.na(meta2$BLAST), "BLAST"] <- "BLAST"
+
+plot_effect <- function(df) {
+  ggplot(df, aes(
+    x = stats::reorder(.data$Variable, .data$IncMSE),
+    y = .data$IncMSE
+  )) +
+    ggplot2::geom_point(fill = "steelblue") +
+    ggplot2::coord_flip() +
+    fig_theme(base_size = 13)
+}
+
+```
+
+## 2) ML
+```{r , fig.width=11, fig.height=7}
+
+## Machine learning 기반 확인 
+rf_r2_out <- make_rf_importance(meta2, "R2")
+rf_f1_out <- make_rf_importance(meta2, "F1")
+
+
+rf_r2 <- rf_r2_out$model
+rf_f1 <- rf_f1_out$model
+
+importance_r2.1 <- rf_r2_out$importance
+importance_f1.1 <- rf_f1_out$importance
+
+
+importance_all <- dplyr::bind_rows(
+  # importance_r2.1 |> dplyr::mutate(outcome = "R²"),
+  importance_f1.1 |> dplyr::mutate(outcome = "F1-score")
+)
+readr::write_tsv(importance_all, file.path(table_dir, "rf_importance_combined.tsv"))
+```
+
+## 3) PERMANOVA
+```{r}
+community_wide <- benchmark_long_species |>
+  dplyr::mutate(sample_method_id = paste(run_id, sample_id, taxonomy_method, sep = "__")) |>
+  dplyr::select(sample_method_id, taxon, relative_abundance) |>
+  dplyr::group_by(sample_method_id, taxon) |>
+  dplyr::summarise(relative_abundance = sum(relative_abundance, na.rm = TRUE), .groups = "drop") |>
+  tidyr::pivot_wider(names_from = taxon, values_from = relative_abundance, values_fill = 0)
+
+perma_meta <- benchmark_long_species |>
+  dplyr::mutate(sample_method_id = paste(run_id, sample_id, taxonomy_method, sep = "__")) |>
+  dplyr::distinct(sample_method_id, run_id, sample_id, DNA_kit, BLAST, Paired, Trimm, matrix_type)
+
+community_mat <- community_wide |>
+  dplyr::arrange(sample_method_id) |>
+  tibble::column_to_rownames("sample_method_id") |>
+  as.matrix()
+
+perma_meta <- perma_meta |>
+  dplyr::filter(sample_method_id %in% rownames(community_mat)) |>
+  dplyr::arrange(match(sample_method_id, rownames(community_mat)))
+
+perma_vars <- c("DNA_kit", "Paired", "Trimm", "matrix_type")
+perma_vars <- perma_vars[purrr::map_lgl(perma_vars, ~ dplyr::n_distinct(perma_meta[[.x]], na.rm = TRUE) > 1)]
+
+
+
+## PERMANOVA
+set.seed(123)
+dist_matrix <- vegan::vegdist(community_mat, method = "bray")
+per_res <- vegan::adonis2(
+  formula = stats::as.formula(paste("dist_matrix ~", paste(perma_vars, collapse = " + "))),
+  data = perma_meta,
+  permutations = 9999,
+  by = "margin", 
+  strata = perma_meta$sample_id
+)
+
+## 결과 정리 
+perma_out <- per_res |>
+  as.data.frame() |>
+  tibble::rownames_to_column("Variable") |>
+  dplyr::filter(!Variable %in% c("Residual", "Total")) |>
+  dplyr::rename(p_value = `Pr(>F)`)
+
+readr::write_tsv(perma_out, file.path(table_dir, "permanova_R2.tsv"))
+
+
+
+```
+
+
+## 4) Figure
+
+- Permutation importance  = %IncMSE
+```{r, fig.width=12, fig.height=3}
+# p_rf_r2 <- plot_effect(importance_r2.1) +  labs(x = NULL, y = "%IncMSE", title = "R²")
+
+p_rf_f1 <- plot_effect(importance_f1.1) +  labs(x = NULL, y = "%IncMSE", title = "F1-score")
+
+p_permanova <- ggplot(perma_out, aes( x = stats::reorder(Variable, R2), y = R2)) +
+  ggplot2::geom_point(fill = "steelblue") + ggplot2::coord_flip() +
+  fig_theme(base_size = 13) + ggplot2::labs(x = NULL, y = "Explained variance (R²)", title = "PERMANOVA")
+
+
+
+p_fig4c <- p_rf_f1 | p_permanova
+
+p_fig4c
+
+```
+
+
+
+# 10. Combined figure
+
+```{r combined-figure, fig.width=12, fig.height=12}
+fig_combined <- p_taxa /
+  p_metrics /
+  p_fig4c +
+  patchwork::plot_layout(heights = c(1.2, 1.4, 0.7)) 
+
+fig_combined
+
+ggplot2::ggsave(file.path(figure_dir, "figure2.png"), fig_combined, width = 12, height = 12, 
+                dpi = 300)
+ggplot2::ggsave(file.path(figure_dir, "figure2.pdf"), fig_combined, width = 12, height = 12)
+```
+
+
+
+# 11. Session information
+
+```{r session-info}
+sessionInfo()
+```
+
+
+
+

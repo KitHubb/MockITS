@@ -1,0 +1,17 @@
+Trimm	Paired	preprocess_method	Replacement_Status	Replacement_Reason	n_asv	total_reads	pct_asv	pct_reads
+Cutadapt	PE	Cutadapt	qiime_retained_no_blast_species	No BLAST species-level top hit was available.	256	310174	86.19528619528619	82.2012270263824
+Cutadapt	PE	Cutadapt	qiime_retained_resolved_species	QIIME/UNITE already had a resolved species-level assignment; BLAST did not overwrite it in species_missing_top1_rescue mode.	31	46374	10.437710437710438	12.289875044721533
+Cutadapt	PE	Cutadapt	blast_top1_species_rescued_ambiguous_missing_qiime_species	QIIME/UNITE species was missing or placeholder-like and BLAST top1 species passed cutoffs; top1 was used despite ambiguous top-hit conflict.	6	18755	2.0202020202020203	4.9703844064293
+Cutadapt	PE	Cutadapt	blast_top1_species_rescued_missing_qiime_species	QIIME/UNITE species was missing or placeholder-like and BLAST top1 species passed high-confidence cutoffs.	4	2032	1.3468013468013467	0.5385135224667736
+Cutadapt	SE	Cutadapt	qiime_retained_no_blast_species	No BLAST species-level top hit was available.	255	303834	87.32876712328768	79.5154236902229
+Cutadapt	SE	Cutadapt	qiime_retained_resolved_species	QIIME/UNITE already had a resolved species-level assignment; BLAST did not overwrite it in species_missing_top1_rescue mode.	27	62427	9.246575342465754	16.33757036641569
+Cutadapt	SE	Cutadapt	blast_top1_species_rescued_ambiguous_missing_qiime_species	QIIME/UNITE species was missing or placeholder-like and BLAST top1 species passed cutoffs; top1 was used despite ambiguous top-hit conflict.	7	12972	2.3972602739726026	3.3948606018732974
+Cutadapt	SE	Cutadapt	blast_top1_species_rescued_missing_qiime_species	QIIME/UNITE species was missing or placeholder-like and BLAST top1 species passed high-confidence cutoffs.	3	2874	1.0273972602739725	0.7521453414881172
+ITSxpress	PE	ITSxpress	qiime_retained_no_blast_species	No BLAST species-level top hit was available.	59	95618	64.13043478260869	55.84119790693328
+ITSxpress	PE	ITSxpress	qiime_retained_resolved_species	QIIME/UNITE already had a resolved species-level assignment; BLAST did not overwrite it in species_missing_top1_rescue mode.	26	52289	28.26086956521739	30.536932349093625
+ITSxpress	PE	ITSxpress	blast_top1_species_rescued_ambiguous_missing_qiime_species	QIIME/UNITE species was missing or placeholder-like and BLAST top1 species passed cutoffs; top1 was used despite ambiguous top-hit conflict.	6	21531	6.521739130434782	12.574168379742105
+ITSxpress	PE	ITSxpress	blast_top1_species_rescued_missing_qiime_species	QIIME/UNITE species was missing or placeholder-like and BLAST top1 species passed high-confidence cutoffs.	1	1794	1.0869565217391304	1.0477013642309847
+ITSxpress	SE	ITSxpress	qiime_retained_no_blast_species	No BLAST species-level top hit was available.	55	95545	61.79775280898876	55.11745160024921
+ITSxpress	SE	ITSxpress	qiime_retained_resolved_species	QIIME/UNITE already had a resolved species-level assignment; BLAST did not overwrite it in species_missing_top1_rescue mode.	27	54453	30.337078651685395	31.412534324018736
+ITSxpress	SE	ITSxpress	blast_top1_species_rescued_ambiguous_missing_qiime_species	QIIME/UNITE species was missing or placeholder-like and BLAST top1 species passed cutoffs; top1 was used despite ambiguous top-hit conflict.	6	21554	6.741573033707865	12.43394789671643
+ITSxpress	SE	ITSxpress	blast_top1_species_rescued_missing_qiime_species	QIIME/UNITE species was missing or placeholder-like and BLAST top1 species passed high-confidence cutoffs.	1	1796	1.1235955056179776	1.0360661790156218

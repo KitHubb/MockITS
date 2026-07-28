@@ -1,0 +1,5 @@
+Trimm	Paired	n_stool_asv	total_stool_reads	n_phylum_or_higher_asv	phylum_or_higher_reads	pct_phylum_or_higher_asv	pct_phylum_or_higher_reads
+Cutadapt	PE	297	377335	188	225309	63.2996632996633	59.710601984973565
+Cutadapt	SE	292	382107	205	220457	70.2054794520548	57.69509587628596
+ITSxpress	PE	92	171232	5	9561	5.434782608695652	5.583652588301252
+ITSxpress	SE	89	173348	9	15272	10.112359550561797	8.810023767219697

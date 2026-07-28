@@ -1,0 +1,418 @@
+DNA_kit	Paired	taxonomic_rank	taxon	detected_by_cutadapt	detected_by_itsxpress	taxon_method_set
+DNeasy	PE	Genus	Agaricomycetes_c	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Genus	Ascomycota_p	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Genus	Aspergillus	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Atheliales_o	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Bjerkandera	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Bullera	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Ceratobasidiaceae_f	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Genus	Ceriporia	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Cladosporium	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Coprinopsis	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Fungi_k	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Hericiaceae_f	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Hydnoporia	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Genus	Hymenochaetopsis	FALSE	TRUE	ITSxpress only
+DNeasy	PE	Genus	Irpex	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Kazachstania	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Lecanorales_o	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Genus	Lecanoromycetes_c	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Genus	Leucosporidium	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Mucor	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Penicillium	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Peniophoraceae_f	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Phanerochaete	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Phlebiopsis	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Pleosporales_o	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Rhizoplaca	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Genus	Sarocladium	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Schizophyllum	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Sistotremastrum	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Sporobolomyces	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Stereaceae_f	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Suillus	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Thanatephorus	FALSE	TRUE	ITSxpress only
+DNeasy	PE	Genus	Trametes	TRUE	TRUE	Shared
+DNeasy	PE	Genus	Udeniomyces	TRUE	TRUE	Shared
+DNeasy	PE	Species	Agaricomycetes_c	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Species	Ascomycota_p	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Species	Aspergillus_neotritici	TRUE	TRUE	Shared
+DNeasy	PE	Species	Aspergillus_niger	TRUE	TRUE	Shared
+DNeasy	PE	Species	Atheliales_o	TRUE	TRUE	Shared
+DNeasy	PE	Species	Bjerkandera_adusta	TRUE	TRUE	Shared
+DNeasy	PE	Species	Bullera_alba	TRUE	TRUE	Shared
+DNeasy	PE	Species	Ceratobasidiaceae_f	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Species	Ceriporia_nanlingensis	TRUE	TRUE	Shared
+DNeasy	PE	Species	Cladosporium_angustisporum	FALSE	TRUE	ITSxpress only
+DNeasy	PE	Species	Cladosporium_colombiae	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Species	Cladosporium_ossifragi	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Species	Coprinopsis_g	FALSE	TRUE	ITSxpress only
+DNeasy	PE	Species	Coprinopsis_urticicola	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Species	Fungi_k	TRUE	TRUE	Shared
+DNeasy	PE	Species	Hericiaceae_f	TRUE	TRUE	Shared
+DNeasy	PE	Species	Hydnoporia_yasudae	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Species	Hymenochaetopsis_yasudae	FALSE	TRUE	ITSxpress only
+DNeasy	PE	Species	Irpex_g	FALSE	TRUE	ITSxpress only
+DNeasy	PE	Species	Irpex_hacksungii	FALSE	TRUE	ITSxpress only
+DNeasy	PE	Species	Irpex_hydnoides	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Species	Irpex_laceratus	TRUE	TRUE	Shared
+DNeasy	PE	Species	Kazachstania_servazzii	TRUE	TRUE	Shared
+DNeasy	PE	Species	Lecanorales_o	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Species	Lecanoromycetes_c	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Species	Leucosporidium_intermedium	TRUE	TRUE	Shared
+DNeasy	PE	Species	Mucor_circinelloides	TRUE	TRUE	Shared
+DNeasy	PE	Species	Penicillium_brevicompactum	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Species	Penicillium_patris-mei	FALSE	TRUE	ITSxpress only
+DNeasy	PE	Species	Penicillium_sclerotiorum	TRUE	TRUE	Shared
+DNeasy	PE	Species	Penicillium_sumatraense	TRUE	TRUE	Shared
+DNeasy	PE	Species	Peniophoraceae_f	TRUE	TRUE	Shared
+DNeasy	PE	Species	Phanerochaete_livescens	TRUE	TRUE	Shared
+DNeasy	PE	Species	Phlebiopsis_g	TRUE	TRUE	Shared
+DNeasy	PE	Species	Pleosporales_o	TRUE	TRUE	Shared
+DNeasy	PE	Species	Rhizoplaca_novomexicana	TRUE	FALSE	Cutadapt only
+DNeasy	PE	Species	Sarocladium_zeae	TRUE	TRUE	Shared
+DNeasy	PE	Species	Schizophyllum_commune	TRUE	TRUE	Shared
+DNeasy	PE	Species	Sistotremastrum_guttuliferum	TRUE	TRUE	Shared
+DNeasy	PE	Species	Sporobolomyces_carnicolor	TRUE	TRUE	Shared
+DNeasy	PE	Species	Stereaceae_f	TRUE	TRUE	Shared
+DNeasy	PE	Species	Suillus_viscidus	TRUE	TRUE	Shared
+DNeasy	PE	Species	Thanatephorus_g	FALSE	TRUE	ITSxpress only
+DNeasy	PE	Species	Trametes_hirsuta	TRUE	TRUE	Shared
+DNeasy	PE	Species	Udeniomyces_pyricola	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Ascomycota_p	TRUE	FALSE	Cutadapt only
+DNeasy	SE	Genus	Aspergillus	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Atheliales_o	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Bjerkandera	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Bullera	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Ceratobasidiaceae_f	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Ceriporia	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Cladosporium	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Coprinopsis	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Dentipellis	TRUE	FALSE	Cutadapt only
+DNeasy	SE	Genus	Fungi_k	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Hericiaceae_f	FALSE	TRUE	ITSxpress only
+DNeasy	SE	Genus	Hymenochaetopsis	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Irpex	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Kazachstania	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Lecanoromycetes_c	TRUE	FALSE	Cutadapt only
+DNeasy	SE	Genus	Leucosporidium	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Mucor	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Penicillium	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Peniophoraceae_f	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Phanerochaete	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Phlebiopsis	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Pleosporales_o	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Rhizoplaca	TRUE	FALSE	Cutadapt only
+DNeasy	SE	Genus	Sarocladium	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Schizophyllum	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Schizoporaceae_f	TRUE	FALSE	Cutadapt only
+DNeasy	SE	Genus	Sistotremastrum	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Sporobolomyces	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Stereaceae_f	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Suillus	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Trametes	TRUE	TRUE	Shared
+DNeasy	SE	Genus	Udeniomyces	TRUE	TRUE	Shared
+DNeasy	SE	Species	Ascomycota_p	TRUE	FALSE	Cutadapt only
+DNeasy	SE	Species	Aspergillus_candidus	TRUE	FALSE	Cutadapt only
+DNeasy	SE	Species	Aspergillus_neotritici	FALSE	TRUE	ITSxpress only
+DNeasy	SE	Species	Aspergillus_niger	TRUE	TRUE	Shared
+DNeasy	SE	Species	Atheliales_o	TRUE	TRUE	Shared
+DNeasy	SE	Species	Bjerkandera_adusta	TRUE	TRUE	Shared
+DNeasy	SE	Species	Bullera_alba	TRUE	TRUE	Shared
+DNeasy	SE	Species	Ceratobasidiaceae_f	TRUE	TRUE	Shared
+DNeasy	SE	Species	Ceriporia_nanlingensis	TRUE	TRUE	Shared
+DNeasy	SE	Species	Cladosporium_angustisporum	TRUE	TRUE	Shared
+DNeasy	SE	Species	Cladosporium_herbarum	TRUE	FALSE	Cutadapt only
+DNeasy	SE	Species	Coprinopsis_g	TRUE	TRUE	Shared
+DNeasy	SE	Species	Dentipellis_fragilis	TRUE	FALSE	Cutadapt only
+DNeasy	SE	Species	Fungi_k	TRUE	TRUE	Shared
+DNeasy	SE	Species	Hericiaceae_f	FALSE	TRUE	ITSxpress only
+DNeasy	SE	Species	Hymenochaetopsis_yasudae	TRUE	TRUE	Shared
+DNeasy	SE	Species	Irpex_hacksungii	TRUE	TRUE	Shared
+DNeasy	SE	Species	Irpex_laceratus	TRUE	TRUE	Shared
+DNeasy	SE	Species	Kazachstania_servazzii	TRUE	TRUE	Shared
+DNeasy	SE	Species	Lecanoromycetes_c	TRUE	FALSE	Cutadapt only
+DNeasy	SE	Species	Leucosporidium_intermedium	TRUE	TRUE	Shared
+DNeasy	SE	Species	Mucor_circinelloides	TRUE	TRUE	Shared
+DNeasy	SE	Species	Penicillium_cuddlyae	TRUE	FALSE	Cutadapt only
+DNeasy	SE	Species	Penicillium_patris-mei	TRUE	TRUE	Shared
+DNeasy	SE	Species	Penicillium_sclerotiorum	TRUE	TRUE	Shared
+DNeasy	SE	Species	Penicillium_sumatraense	TRUE	TRUE	Shared
+DNeasy	SE	Species	Peniophoraceae_f	TRUE	TRUE	Shared
+DNeasy	SE	Species	Phanerochaete_livescens	TRUE	TRUE	Shared
+DNeasy	SE	Species	Phlebiopsis_g	TRUE	TRUE	Shared
+DNeasy	SE	Species	Pleosporales_o	TRUE	TRUE	Shared
+DNeasy	SE	Species	Rhizoplaca_novomexicana	TRUE	FALSE	Cutadapt only
+DNeasy	SE	Species	Sarocladium_zeae	TRUE	TRUE	Shared
+DNeasy	SE	Species	Schizophyllum_commune	TRUE	TRUE	Shared
+DNeasy	SE	Species	Schizoporaceae_f	TRUE	FALSE	Cutadapt only
+DNeasy	SE	Species	Sistotremastrum_guttuliferum	TRUE	TRUE	Shared
+DNeasy	SE	Species	Sporobolomyces_carnicolor	TRUE	TRUE	Shared
+DNeasy	SE	Species	Stereaceae_f	TRUE	TRUE	Shared
+DNeasy	SE	Species	Suillus_g	TRUE	TRUE	Shared
+DNeasy	SE	Species	Trametes_hirsuta	TRUE	TRUE	Shared
+DNeasy	SE	Species	Udeniomyces_pyricola	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Ascomycota_p	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Genus	Aspergillus	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Aureobasidium	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Biscogniauxia	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Bjerkandera	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Burgoa	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Candida	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Candolleomyces	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Ceriporia	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Cladosporium	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Crepidotus	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Cystobasidium	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Daedaleopsis	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Debaryomyces	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Didymellaceae_f	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Genus	Epicoccum	FALSE	TRUE	ITSxpress only
+QIAamp	PE	Genus	Fungi_k	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Fuscoporia	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Helotiales_o	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Irpex	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Kazachstania	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Lecanoromycetes_c	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Genus	Malassezia	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Mucor	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Neodidymella	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Ophiognomonia	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Paragibellulopsis	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Penicillium	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Peniophoraceae_f	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Plagiostoma	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Genus	Polyporales_o	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Rhizoplaca	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Genus	Rhodotorula	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Schizophyllum	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Sporobolomyces	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Steccherinum	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Stereaceae_f	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Talaromyces	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Trametes	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Trechispora	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Xeromyces	TRUE	TRUE	Shared
+QIAamp	PE	Genus	Xylodon	TRUE	TRUE	Shared
+QIAamp	PE	Species	Ascomycota_p	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Aspergillus_ruber	TRUE	TRUE	Shared
+QIAamp	PE	Species	Aureobasidium_intercalariosporum	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Aureobasidium_pullulans	TRUE	TRUE	Shared
+QIAamp	PE	Species	Biscogniauxia_atropunctata	TRUE	TRUE	Shared
+QIAamp	PE	Species	Bjerkandera_adusta	TRUE	TRUE	Shared
+QIAamp	PE	Species	Burgoa_g	FALSE	TRUE	ITSxpress only
+QIAamp	PE	Species	Burgoa_verzuoliana	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Candida_dubliniensis	TRUE	TRUE	Shared
+QIAamp	PE	Species	Candolleomyces_g	FALSE	TRUE	ITSxpress only
+QIAamp	PE	Species	Candolleomyces_subminutisporus	TRUE	TRUE	Shared
+QIAamp	PE	Species	Candolleomyces_sulcatotuberculosus	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Ceriporia_nanlingensis	TRUE	TRUE	Shared
+QIAamp	PE	Species	Cladosporium_angustisporum	FALSE	TRUE	ITSxpress only
+QIAamp	PE	Species	Cladosporium_colocasiae	FALSE	TRUE	ITSxpress only
+QIAamp	PE	Species	Cladosporium_colombiae	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Cladosporium_ossifragi	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Cladosporium_tenuissimum	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Crepidotus_g	TRUE	TRUE	Shared
+QIAamp	PE	Species	Cystobasidium_slooffiae	TRUE	TRUE	Shared
+QIAamp	PE	Species	Daedaleopsis_confragosa	TRUE	TRUE	Shared
+QIAamp	PE	Species	Debaryomyces_delbrueckii	TRUE	TRUE	Shared
+QIAamp	PE	Species	Didymellaceae_f	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Epicoccum_pimprinum	FALSE	TRUE	ITSxpress only
+QIAamp	PE	Species	Fungi_k	TRUE	TRUE	Shared
+QIAamp	PE	Species	Fuscoporia_karsteniana	TRUE	TRUE	Shared
+QIAamp	PE	Species	Helotiales_o	TRUE	TRUE	Shared
+QIAamp	PE	Species	Irpex_g	FALSE	TRUE	ITSxpress only
+QIAamp	PE	Species	Irpex_hacksungii	FALSE	TRUE	ITSxpress only
+QIAamp	PE	Species	Irpex_hydnoides	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Irpex_laceratus	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Kazachstania_servazzii	TRUE	TRUE	Shared
+QIAamp	PE	Species	Lecanoromycetes_c	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Malassezia_sympodialis	TRUE	TRUE	Shared
+QIAamp	PE	Species	Mucor_circinelloides	TRUE	TRUE	Shared
+QIAamp	PE	Species	Mucor_g	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Mucor_nidicola	FALSE	TRUE	ITSxpress only
+QIAamp	PE	Species	Neodidymella_thailandicum	TRUE	TRUE	Shared
+QIAamp	PE	Species	Ophiognomonia_g	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Ophiognomonia_pseudoischnostyla	FALSE	TRUE	ITSxpress only
+QIAamp	PE	Species	Paragibellulopsis_chrysanthemi	TRUE	TRUE	Shared
+QIAamp	PE	Species	Penicillium_brevicompactum	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Penicillium_citrinum	FALSE	TRUE	ITSxpress only
+QIAamp	PE	Species	Penicillium_g	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Penicillium_patris-mei	FALSE	TRUE	ITSxpress only
+QIAamp	PE	Species	Penicillium_sumatraense	TRUE	TRUE	Shared
+QIAamp	PE	Species	Peniophoraceae_f	TRUE	TRUE	Shared
+QIAamp	PE	Species	Plagiostoma_g	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Polyporales_o	TRUE	TRUE	Shared
+QIAamp	PE	Species	Rhizoplaca_novomexicana	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Rhodotorula_mucilaginosa	TRUE	TRUE	Shared
+QIAamp	PE	Species	Schizophyllum_commune	TRUE	TRUE	Shared
+QIAamp	PE	Species	Sporobolomyces_phaffii	FALSE	TRUE	ITSxpress only
+QIAamp	PE	Species	Sporobolomyces_ruberrimus	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Steccherinum_tenuissimum	TRUE	TRUE	Shared
+QIAamp	PE	Species	Stereaceae_f	TRUE	TRUE	Shared
+QIAamp	PE	Species	Talaromyces_g	FALSE	TRUE	ITSxpress only
+QIAamp	PE	Species	Talaromyces_purgamentorum	TRUE	FALSE	Cutadapt only
+QIAamp	PE	Species	Trametes_pubescens	TRUE	TRUE	Shared
+QIAamp	PE	Species	Trechispora_g	TRUE	TRUE	Shared
+QIAamp	PE	Species	Xeromyces_bisporus	TRUE	TRUE	Shared
+QIAamp	PE	Species	Xylodon_flaviporus	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Ascomycota_p	TRUE	FALSE	Cutadapt only
+QIAamp	SE	Genus	Aspergillus	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Aureobasidium	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Biscogniauxia	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Bjerkandera	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Boeremia	TRUE	FALSE	Cutadapt only
+QIAamp	SE	Genus	Candida	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Candolleomyces	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Ceriporia	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Cladosporium	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Crepidotus	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Cystobasidium	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Daedaleopsis	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Debaryomyces	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Epicoccum	FALSE	TRUE	ITSxpress only
+QIAamp	SE	Genus	Fungi_k	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Fuscoporia	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Helotiales_o	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Hydnaceae_f	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Irpex	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Kazachstania	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Lecanorales_o	TRUE	FALSE	Cutadapt only
+QIAamp	SE	Genus	Malassezia	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Metschnikowia	TRUE	FALSE	Cutadapt only
+QIAamp	SE	Genus	Mucor	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Neodidymella	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Ophiognomonia	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Paragibellulopsis	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Penicillium	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Peniophoraceae_f	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Polyporales_o	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Rhizoplaca	TRUE	FALSE	Cutadapt only
+QIAamp	SE	Genus	Rhodotorula	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Schizophyllum	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Sporobolomyces	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Steccherinum	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Stereaceae_f	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Talaromyces	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Trametes	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Trechispora	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Xeromyces	TRUE	TRUE	Shared
+QIAamp	SE	Genus	Xylodon	TRUE	TRUE	Shared
+QIAamp	SE	Species	Ascomycota_p	TRUE	FALSE	Cutadapt only
+QIAamp	SE	Species	Aspergillus_cibarius	TRUE	FALSE	Cutadapt only
+QIAamp	SE	Species	Aspergillus_ruber	FALSE	TRUE	ITSxpress only
+QIAamp	SE	Species	Aureobasidium_pullulans	TRUE	TRUE	Shared
+QIAamp	SE	Species	Biscogniauxia_atropunctata	TRUE	TRUE	Shared
+QIAamp	SE	Species	Bjerkandera_adusta	TRUE	TRUE	Shared
+QIAamp	SE	Species	Boeremia_lycopersici	TRUE	FALSE	Cutadapt only
+QIAamp	SE	Species	Candida_dubliniensis	TRUE	TRUE	Shared
+QIAamp	SE	Species	Candolleomyces_g	TRUE	TRUE	Shared
+QIAamp	SE	Species	Candolleomyces_subminutisporus	TRUE	TRUE	Shared
+QIAamp	SE	Species	Ceriporia_nanlingensis	TRUE	TRUE	Shared
+QIAamp	SE	Species	Cladosporium_angustisporum	TRUE	TRUE	Shared
+QIAamp	SE	Species	Cladosporium_colocasiae	TRUE	TRUE	Shared
+QIAamp	SE	Species	Cladosporium_herbarum	TRUE	FALSE	Cutadapt only
+QIAamp	SE	Species	Crepidotus_g	TRUE	TRUE	Shared
+QIAamp	SE	Species	Cystobasidium_slooffiae	TRUE	TRUE	Shared
+QIAamp	SE	Species	Daedaleopsis_confragosa	TRUE	TRUE	Shared
+QIAamp	SE	Species	Debaryomyces_delbrueckii	TRUE	TRUE	Shared
+QIAamp	SE	Species	Epicoccum_pimprinum	FALSE	TRUE	ITSxpress only
+QIAamp	SE	Species	Fungi_k	TRUE	TRUE	Shared
+QIAamp	SE	Species	Fuscoporia_karsteniana	TRUE	TRUE	Shared
+QIAamp	SE	Species	Helotiales_o	TRUE	TRUE	Shared
+QIAamp	SE	Species	Hydnaceae_f	TRUE	TRUE	Shared
+QIAamp	SE	Species	Irpex_hacksungii	TRUE	TRUE	Shared
+QIAamp	SE	Species	Irpex_laceratus	TRUE	TRUE	Shared
+QIAamp	SE	Species	Kazachstania_servazzii	TRUE	TRUE	Shared
+QIAamp	SE	Species	Lecanorales_o	TRUE	FALSE	Cutadapt only
+QIAamp	SE	Species	Malassezia_sympodialis	TRUE	TRUE	Shared
+QIAamp	SE	Species	Metschnikowia_g	TRUE	FALSE	Cutadapt only
+QIAamp	SE	Species	Mucor_circinelloides	TRUE	TRUE	Shared
+QIAamp	SE	Species	Mucor_nidicola	TRUE	TRUE	Shared
+QIAamp	SE	Species	Neodidymella_thailandicum	TRUE	TRUE	Shared
+QIAamp	SE	Species	Ophiognomonia_asiatica	TRUE	FALSE	Cutadapt only
+QIAamp	SE	Species	Ophiognomonia_pseudoischnostyla	FALSE	TRUE	ITSxpress only
+QIAamp	SE	Species	Paragibellulopsis_chrysanthemi	TRUE	TRUE	Shared
+QIAamp	SE	Species	Penicillium_citrinum	TRUE	TRUE	Shared
+QIAamp	SE	Species	Penicillium_patris-mei	TRUE	TRUE	Shared
+QIAamp	SE	Species	Penicillium_sumatraense	TRUE	TRUE	Shared
+QIAamp	SE	Species	Peniophoraceae_f	TRUE	TRUE	Shared
+QIAamp	SE	Species	Polyporales_o	TRUE	TRUE	Shared
+QIAamp	SE	Species	Rhizoplaca_novomexicana	TRUE	FALSE	Cutadapt only
+QIAamp	SE	Species	Rhodotorula_mucilaginosa	TRUE	TRUE	Shared
+QIAamp	SE	Species	Schizophyllum_commune	TRUE	TRUE	Shared
+QIAamp	SE	Species	Sporobolomyces_phaffii	TRUE	TRUE	Shared
+QIAamp	SE	Species	Steccherinum_tenuissimum	TRUE	TRUE	Shared
+QIAamp	SE	Species	Stereaceae_f	TRUE	TRUE	Shared
+QIAamp	SE	Species	Talaromyces_adpressus	TRUE	FALSE	Cutadapt only
+QIAamp	SE	Species	Talaromyces_g	FALSE	TRUE	ITSxpress only
+QIAamp	SE	Species	Trametes_pubescens	TRUE	TRUE	Shared
+QIAamp	SE	Species	Trechispora_g	TRUE	TRUE	Shared
+QIAamp	SE	Species	Xeromyces_bisporus	TRUE	TRUE	Shared
+QIAamp	SE	Species	Xylodon_flaviporus	TRUE	TRUE	Shared
+Zymo	PE	Genus	Ascomycota_p	TRUE	FALSE	Cutadapt only
+Zymo	PE	Genus	Cladosporium	TRUE	TRUE	Shared
+Zymo	PE	Genus	Cutaneotrichosporon	TRUE	TRUE	Shared
+Zymo	PE	Genus	Debaryomyces	TRUE	TRUE	Shared
+Zymo	PE	Genus	Didymellaceae_f	TRUE	FALSE	Cutadapt only
+Zymo	PE	Genus	Epicoccum	FALSE	TRUE	ITSxpress only
+Zymo	PE	Genus	Fungi_k	TRUE	FALSE	Cutadapt only
+Zymo	PE	Genus	Kazachstania	TRUE	TRUE	Shared
+Zymo	PE	Genus	Lecanorales_o	TRUE	FALSE	Cutadapt only
+Zymo	PE	Genus	Lecanoromycetes_c	TRUE	FALSE	Cutadapt only
+Zymo	PE	Genus	Mucor	TRUE	TRUE	Shared
+Zymo	PE	Genus	Nigrospora	TRUE	TRUE	Shared
+Zymo	PE	Genus	Penicillium	TRUE	TRUE	Shared
+Zymo	PE	Genus	Rhizoplaca	TRUE	TRUE	Shared
+Zymo	PE	Genus	Saccharomyces	TRUE	TRUE	Shared
+Zymo	PE	Genus	Tilletiopsis	TRUE	TRUE	Shared
+Zymo	PE	Species	Ascomycota_p	TRUE	FALSE	Cutadapt only
+Zymo	PE	Species	Cladosporium_angustisporum	FALSE	TRUE	ITSxpress only
+Zymo	PE	Species	Cladosporium_colombiae	TRUE	FALSE	Cutadapt only
+Zymo	PE	Species	Cutaneotrichosporon_debeurmannianum	TRUE	TRUE	Shared
+Zymo	PE	Species	Debaryomyces_delbrueckii	TRUE	TRUE	Shared
+Zymo	PE	Species	Didymellaceae_f	TRUE	FALSE	Cutadapt only
+Zymo	PE	Species	Epicoccum_pimprinum	FALSE	TRUE	ITSxpress only
+Zymo	PE	Species	Fungi_k	TRUE	FALSE	Cutadapt only
+Zymo	PE	Species	Kazachstania_servazzii	TRUE	TRUE	Shared
+Zymo	PE	Species	Lecanorales_o	TRUE	FALSE	Cutadapt only
+Zymo	PE	Species	Lecanoromycetes_c	TRUE	FALSE	Cutadapt only
+Zymo	PE	Species	Mucor_circinelloides	TRUE	TRUE	Shared
+Zymo	PE	Species	Nigrospora_g	TRUE	TRUE	Shared
+Zymo	PE	Species	Penicillium_brevicompactum	TRUE	FALSE	Cutadapt only
+Zymo	PE	Species	Penicillium_patris-mei	FALSE	TRUE	ITSxpress only
+Zymo	PE	Species	Rhizoplaca_novomexicana	TRUE	TRUE	Shared
+Zymo	PE	Species	Saccharomyces_cerevisiae	TRUE	TRUE	Shared
+Zymo	PE	Species	Tilletiopsis_washingtonensis	TRUE	TRUE	Shared
+Zymo	SE	Genus	Ascomycota_p	TRUE	TRUE	Shared
+Zymo	SE	Genus	Boeremia	TRUE	FALSE	Cutadapt only
+Zymo	SE	Genus	Cladosporium	TRUE	TRUE	Shared
+Zymo	SE	Genus	Cutaneotrichosporon	TRUE	TRUE	Shared
+Zymo	SE	Genus	Debaryomyces	TRUE	TRUE	Shared
+Zymo	SE	Genus	Epicoccum	FALSE	TRUE	ITSxpress only
+Zymo	SE	Genus	Fungi_k	TRUE	FALSE	Cutadapt only
+Zymo	SE	Genus	Kazachstania	TRUE	TRUE	Shared
+Zymo	SE	Genus	Lecanorales_o	TRUE	FALSE	Cutadapt only
+Zymo	SE	Genus	Lecanoromycetes_c	TRUE	FALSE	Cutadapt only
+Zymo	SE	Genus	Mucor	TRUE	TRUE	Shared
+Zymo	SE	Genus	Nigrospora	TRUE	TRUE	Shared
+Zymo	SE	Genus	Penicillium	TRUE	TRUE	Shared
+Zymo	SE	Genus	Rhizoplaca	TRUE	FALSE	Cutadapt only
+Zymo	SE	Genus	Saccharomyces	TRUE	TRUE	Shared
+Zymo	SE	Genus	Tilletiopsis	TRUE	TRUE	Shared
+Zymo	SE	Species	Ascomycota_p	TRUE	TRUE	Shared
+Zymo	SE	Species	Boeremia_lycopersici	TRUE	FALSE	Cutadapt only
+Zymo	SE	Species	Cladosporium_angustisporum	TRUE	TRUE	Shared
+Zymo	SE	Species	Cutaneotrichosporon_debeurmannianum	TRUE	TRUE	Shared
+Zymo	SE	Species	Debaryomyces_delbrueckii	TRUE	TRUE	Shared
+Zymo	SE	Species	Epicoccum_pimprinum	FALSE	TRUE	ITSxpress only
+Zymo	SE	Species	Fungi_k	TRUE	FALSE	Cutadapt only
+Zymo	SE	Species	Kazachstania_servazzii	TRUE	TRUE	Shared
+Zymo	SE	Species	Lecanorales_o	TRUE	FALSE	Cutadapt only
+Zymo	SE	Species	Lecanoromycetes_c	TRUE	FALSE	Cutadapt only
+Zymo	SE	Species	Mucor_circinelloides	TRUE	TRUE	Shared
+Zymo	SE	Species	Nigrospora_g	TRUE	TRUE	Shared
+Zymo	SE	Species	Penicillium_patris-mei	TRUE	TRUE	Shared
+Zymo	SE	Species	Rhizoplaca_novomexicana	TRUE	FALSE	Cutadapt only
+Zymo	SE	Species	Saccharomyces_cerevisiae	TRUE	TRUE	Shared
+Zymo	SE	Species	Tilletiopsis_washingtonensis	TRUE	TRUE	Shared
